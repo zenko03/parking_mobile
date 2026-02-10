@@ -1,4 +1,57 @@
 {
-  "name": "UPark",
-  "displayName": "UPark"
+  "expo": {
+    "name": "UPark",
+    "slug": "upark",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "upark",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.upark",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Pour scanner les QR codes et prendre des photos de parking",
+        "NSPhotoLibraryUsageDescription": "Pour ajouter des photos de votre parking",
+        "NSLocationWhenInUseUsageDescription": "Pour trouver des parkings près de vous",
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
+    },
+    "android": {
+      "package": "com.upark",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png",
+      "output": "single"
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 24
+          }
+        }
+      ]
+    ],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ]
+  }
 }

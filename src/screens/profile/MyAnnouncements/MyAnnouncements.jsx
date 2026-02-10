@@ -35,7 +35,7 @@ const MyAnnouncements = ({ navigation }) => {
         await loadAnnouncements(user.Id_Users);
       }
     } catch (error) {
-      console.error('Erreur chargement utilisateur:', error);
+      console.error('[User] Load error:', error.message);
       setLoading(false);
     }
   };
@@ -44,11 +44,6 @@ const MyAnnouncements = ({ navigation }) => {
     try {
       setLoading(true);
       const data = await announcementService.getMyAnnouncements(uid);
-      console.log('🔍 Annonces chargées:', JSON.stringify(data, null, 2));
-      if (data && data.length > 0) {
-        console.log('🔍 Première annonce - clés:', Object.keys(data[0]));
-        console.log('🔍 Première annonce - published?:', data[0].published, data[0].isPublished, data[0].is_published);
-      }
       setAnnouncements(data);
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de charger vos annonces');
@@ -94,7 +89,7 @@ const MyAnnouncements = ({ navigation }) => {
 
   const handleTogglePublish = async (announcement) => {
     const announcementId = announcement.Id_Announcements || announcement.id_Announcements;
-    console.log('Toggle publish for announcement:', announcement, 'ID:', announcementId);
+
 
     if (!announcementId) {
       Alert.alert('Erreur', 'ID d\'annonce invalide');
@@ -107,7 +102,7 @@ const MyAnnouncements = ({ navigation }) => {
       Alert.alert('Succès', `Annonce ${newStatus} avec succès`);
       loadAnnouncements(userId);
     } catch (error) {
-      console.error('Erreur toggle publish:', error);
+      console.error('[Announcement] Toggle publish error:', error.message);
       Alert.alert('Erreur', 'Impossible de modifier le statut de publication');
     }
   };

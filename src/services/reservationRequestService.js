@@ -7,29 +7,18 @@ const reservationRequestService = {
 
   createReservationRequest: async (requestData) => {
     try {
-      console.log('📤 Envoi demande de réservation:', requestData);
-
-      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-      const token = await AsyncStorage.getItem('jwt_token');
-
-      if (!token) {
-        throw new Error('Vous devez être connecté pour faire une demande de réservation');
-      }
-
       const response = await api.post(BASE_PATH, {
         requesterId: requestData.requesterId,
         announcementId: requestData.announcementId,
         startDateTime: requestData.startDateTime,
         endDateTime: requestData.endDateTime,
         totalGain: requestData.totalGain,
-        selectedVehicles: requestData.selectedVehicles //  Ajout des véhicules sélectionnés
+        selectedVehicles: requestData.selectedVehicles
       });
 
-      console.log(' Demande créée:', response.data);
-      console.log(' Véhicules sélectionnés:', requestData.selectedVehicles);
       return response.data;
     } catch (error) {
-      console.error('Erreur: Erreur création demande:', error);
+      console.error('[Request] Create error:', error.message);
 
       if (error.response?.status === 401) {
         throw new Error('Session expirée. Reconnectez-vous.');
@@ -41,7 +30,7 @@ const reservationRequestService = {
     }
   },
 
-  
+
   getRequestsByOwner: async (ownerId) => {
     try {
       // Si ownerId n'est pas fourni, récupérer l'utilisateur connecté
@@ -52,21 +41,19 @@ const reservationRequestService = {
         ownerId = user?.Id_Users;
 
         if (!ownerId) {
-          console.warn(' Aucun utilisateur connecté pour getRequestsByOwner');
           return [];
         }
       }
 
       const response = await api.get(`${BASE_PATH}/owner/${ownerId}`);
-      console.log(`📥 Demandes reçues pour propriétaire ${ownerId}:`, response.data.length);
       return response.data;
     } catch (error) {
-      console.error('Erreur: Erreur récupération demandes propriétaire:', error);
+      console.error('[Request] Owner fetch error:', error.message);
       throw error;
     }
   },
 
-  
+
   getRequestsByRequester: async (requesterId) => {
     try {
       if (!requesterId) {
@@ -76,68 +63,60 @@ const reservationRequestService = {
         requesterId = user?.Id_Users;
 
         if (!requesterId) {
-          console.warn(' Aucun utilisateur connecté pour getRequestsByRequester');
           return [];
         }
       }
 
       const response = await api.get(`${BASE_PATH}/requester/${requesterId}`);
-      console.log(`📥 Demandes envoyées par client ${requesterId}:`, response.data.length);
       return response.data;
     } catch (error) {
-      console.error('Erreur: Erreur récupération demandes client:', error);
+      console.error('[Request] Requester fetch error:', error.message);
       throw error;
     }
   },
 
-  
+
   getRequestsByState: async (state) => {
     try {
       const response = await api.get(`${BASE_PATH}/status/${state}`);
       return response.data;
     } catch (error) {
-      console.error('Erreur: Erreur récupération demandes par statut:', error);
+      console.error('[Request] Status fetch error:', error.message);
       throw error;
     }
   },
 
-  
+
   acceptRequest: async (requestId) => {
     try {
-      console.log(` Acceptation demande ${requestId}`);
       const response = await api.put(`${BASE_PATH}/${requestId}/accept`);
-      console.log(' Demande acceptée:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Erreur: Erreur acceptation demande:', error);
+      console.error('[Request] Accept error:', error.message);
       throw new Error('Impossible d\'accepter la demande');
     }
   },
 
-  
+
   rejectRequest: async (requestId) => {
     try {
-      console.log(`Erreur: Refus demande ${requestId}`);
       const response = await api.put(`${BASE_PATH}/${requestId}/reject`);
-      console.log(' Demande refusée:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Erreur: Erreur refus demande:', error);
+      console.error('[Request] Reject error:', error.message);
       throw new Error('Impossible de refuser la demande');
     }
   },
 
- 
+
   finalizeReservation: async (requestId, paymentMethod = 'CARTE_BANCAIRE') => {
     try {
-      console.log(`💳 Finalisation paiement pour demande ${requestId}`);
       const response = await api.post(
         `${BASE_PATH}/${requestId}/finalize?paymentMethod=${paymentMethod}`
       );
-      console.log(' Réservation finalisée:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Erreur: Erreur finalisation:', error);
+      console.error('[Request] Finalize error:', error.message);
 
       if (error.response?.data?.includes('expiré')) {
         throw new Error('Le délai de paiement est expiré (24h)');
@@ -147,25 +126,23 @@ const reservationRequestService = {
     }
   },
 
-  
+
   cancelRequest: async (requestId) => {
     try {
-      console.log(` Annulation demande ${requestId}`);
       await api.delete(`${BASE_PATH}/${requestId}`);
-      console.log(' Demande annulée');
     } catch (error) {
-      console.error('Erreur: Erreur annulation demande:', error);
+      console.error('[Request] Cancel error:', error.message);
       throw new Error('Impossible d\'annuler la demande');
     }
   },
 
-  
+
   getRequestById: async (requestId) => {
     try {
       const response = await api.get(`${BASE_PATH}/${requestId}`);
       return response.data;
     } catch (error) {
-      console.error('Erreur: Erreur récupération demande:', error);
+      console.error('[Request] Fetch error:', error.message);
       throw error;
     }
   }

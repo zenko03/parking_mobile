@@ -29,10 +29,9 @@ const getVehicleIcon = (iconName) => {
 
 export default function MyParkingDetails({ route, navigation }) {
   const { parkingId } = route.params;
-  
-  console.log(' MyParkingDetails - Paramètres reçus:');
-  console.log('  - parkingId:', parkingId);
-  
+
+
+
   const [parking, setParking] = useState(null);
   const [parkingVehicles, setParkingVehicles] = useState([]);
   const [images, setImages] = useState([]);
@@ -46,30 +45,25 @@ export default function MyParkingDetails({ route, navigation }) {
   const loadParkingDetails = async () => {
     try {
       setLoading(true);
-      console.log('📡 Chargement parking propriétaire ID:', parkingId);
-      
       const data = await parkingService.getParkingById(parkingId);
-      console.log(' Réponse API détails parking:', data);
-      
+
       setParking(data);
-      
+
       // Récupérer les véhicules du parking (appel séparé)
       try {
         const parkingVehicles = await ownerService.getParkingVehicles(parkingId);
-        console.log(' Véhicules du parking:', parkingVehicles);
-        
+
         if (parkingVehicles && parkingVehicles.length > 0) {
           setParkingVehicles(parkingVehicles);
         }
       } catch (vehicleError) {
-        console.error(' Erreur chargement véhicules:', vehicleError);
+        console.error('[Vehicles] Load error:', vehicleError.message);
         // Ne pas bloquer si les véhicules ne peuvent pas être chargés
       }
 
       // Charger les images du parking
       try {
         const parkingImages = await imageService.getParkingImages(parkingId);
-        console.log(` ${parkingImages.length} image(s) chargée(s) pour le parking propriétaire`);
         // Convertir les URLs Supabase en URLs proxy
         const imagesWithProxy = convertImagesToProxy(parkingImages);
         setImages(imagesWithProxy);
@@ -78,7 +72,7 @@ export default function MyParkingDetails({ route, navigation }) {
         // Ne pas bloquer si les images ne peuvent pas être chargées
       }
     } catch (error) {
-      console.error('Erreur: Erreur chargement détails parking:', error);
+      console.error('[ParkingDetails] Load error:', error.message);
       Alert.alert('Erreur', 'Impossible de charger les détails du parking');
     } finally {
       setLoading(false);
@@ -200,10 +194,10 @@ export default function MyParkingDetails({ route, navigation }) {
               {parkingVehicles.map((pv, index) => (
                 <View key={index} style={styles.vehicleAvailRow}>
                   <View style={styles.vehicleInfo}>
-                    <Ionicons 
-                      name={getVehicleIcon(pv.vehicle?.icon)} 
-                      size={24} 
-                      color="#6BBF47" 
+                    <Ionicons
+                      name={getVehicleIcon(pv.vehicle?.icon)}
+                      size={24}
+                      color="#6BBF47"
                       style={styles.vehicleIconStyle}
                     />
                     <Text style={styles.vehicleType}>{pv.vehicle?.types || 'Véhicule'}</Text>
@@ -237,7 +231,6 @@ export default function MyParkingDetails({ route, navigation }) {
           <View style={styles.footer}>
             <TouchableOpacity
               onPress={() => {
-                console.log('Navigation vers Créer une annonce pour parking:', parkingId);
                 navigation.navigate('CreateAnnouncement', { parkingId: parkingId });
               }}
               style={styles.announceButton}
@@ -249,7 +242,7 @@ export default function MyParkingDetails({ route, navigation }) {
 
         </View>
       </ScrollView>
-      
+
       {/* FOOTER */}
       <Footer navigation={navigation} activeRoute="Mes Parkings" />
     </View>

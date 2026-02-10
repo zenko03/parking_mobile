@@ -1,11 +1,10 @@
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { PermissionsAndroid, Platform, Alert } from 'react-native';
 import api from '../config/api';
+import { supabase } from '../config/supabase';
 
 const imageService = {
-  /**
-   * Demander permission caméra (Android)
-   */
+
   requestCameraPermission: async () => {
     if (Platform.OS === 'android') {
       try {
@@ -21,18 +20,45 @@ const imageService = {
         );
         return granted === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
-        console.error('Erreur permission caméra:', err);
+        console.error('[Camera] Permission error:', err.message);
         return false;
       }
     }
     return true;
   },
 
-  /**
-   * Ouvrir la galerie photo
-   * @param {number} maxPhotos - Nombre maximum de photos à sélectionner (0 = illimité)
-   */
+
   pickFromGallery: async (maxPhotos = 5) => {
+    if (Platform.OS === 'web') {
+      return new Promise((resolve) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.multiple = maxPhotos > 1;
+
+        input.onchange = async (e) => {
+          const files = e.target.files;
+          if (!files || files.length === 0) {
+            resolve(null);
+            return;
+          }
+
+          const assets = Array.from(files).slice(0, maxPhotos).map(file => ({
+            uri: URL.createObjectURL(file),
+            fileName: file.name,
+            fileSize: file.size,
+            type: file.type,
+            file: file // Garder le fichier original pour l'upload web si besoin
+          }));
+
+          resolve(assets);
+        };
+
+        input.oncancel = () => resolve(null);
+        input.click();
+      });
+    }
+
     return new Promise((resolve, reject) => {
       launchImageLibrary(
         {
@@ -44,10 +70,9 @@ const imageService = {
         },
         (response) => {
           if (response.didCancel) {
-            console.log('Sélection annulée');
             resolve(null);
           } else if (response.errorCode) {
-            console.error('Erreur galerie:', response.errorMessage);
+            console.error('[Gallery] Erreur:', response.errorMessage);
             reject(new Error(response.errorMessage));
           } else if (response.assets && response.assets.length > 0) {
             resolve(response.assets);
@@ -59,10 +84,36 @@ const imageService = {
     });
   },
 
-  /**
-   * Prendre une photo avec la caméra
-   */
+
   takePhoto: async () => {
+    if (Platform.OS === 'web') {
+      return new Promise((resolve) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.capture = 'environment'; // Demande la caméra arrière sur mobile web
+
+        input.onchange = (e) => {
+          const file = e.target.files?.[0];
+          if (!file) {
+            resolve(null);
+            return;
+          }
+
+          resolve({
+            uri: URL.createObjectURL(file),
+            fileName: file.name,
+            fileSize: file.size,
+            type: file.type,
+            file: file
+          });
+        };
+
+        input.oncancel = () => resolve(null);
+        input.click();
+      });
+    }
+
     const hasPermission = await imageService.requestCameraPermission();
     if (!hasPermission) {
       Alert.alert(
@@ -84,10 +135,9 @@ const imageService = {
         },
         (response) => {
           if (response.didCancel) {
-            console.log('Photo annulée');
             resolve(null);
           } else if (response.errorCode) {
-            console.error('Erreur caméra:', response.errorMessage);
+            console.error('[Camera] Error:', response.errorMessage);
             reject(new Error(response.errorMessage));
           } else if (response.assets && response.assets.length > 0) {
             resolve(response.assets[0]);
@@ -99,38 +149,29 @@ const imageService = {
     });
   },
 
-  /**
-   * Upload une image vers le backend (qui uploade vers Supabase)
-   * @param {Object} imageAsset - Asset image de react-native-image-picker
-   * @param {number} parkingId - ID du parking
-   * @param {number} userId - ID de l'utilisateur
-   * @param {boolean} isPrimary - Image principale ou non
-   */
+
   uploadParkingImage: async (imageAsset, parkingId, userId, isPrimary = false) => {
     try {
-      const fileUri = imageAsset.uri;
       const fileName = imageAsset.fileName || `image_${Date.now()}.jpg`;
 
-      console.log('📤 Conversion image en base64:', fileName);
+      let blob;
+      if (imageAsset.file) {
+        blob = imageAsset.file;
+      } else {
+        const response = await fetch(imageAsset.uri);
+        blob = await response.blob();
+      }
 
-      // Convertir l'image en base64
-      const response = await fetch(fileUri);
-      const blob = await response.blob();
-
-      // Lire le blob comme base64
       const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
-          const base64String = reader.result.split(',')[1]; // Enlever le préfixe data:image/...
+          const base64String = reader.result.split(',')[1];
           resolve(base64String);
         };
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
 
-      console.log('📤 Envoi au backend - Taille base64:', base64.length, 'caractères');
-
-      // Envoyer au backend
       const uploadResponse = await api.post(`/parking-images/${parkingId}/upload`, {
         imageBase64: base64,
         fileName: fileName,
@@ -138,26 +179,18 @@ const imageService = {
         isPrimary: isPrimary
       });
 
-      console.log(' Image uploadée avec succès:', uploadResponse.data);
-
       return {
         filePath: uploadResponse.data.filePath,
         fileUrl: uploadResponse.data.fileUrl,
         fileSize: uploadResponse.data.fileSize,
       };
     } catch (error) {
-      console.error('Erreur: Erreur upload image:', error);
-      console.error('Erreur: Détails:', error.response?.data);
+      console.error('[Upload] Error:', error.response?.data || error.message);
       throw error;
     }
   },
 
-  /**
-   * Sauvegarder metadata dans PostgreSQL via Spring Boot
-   * @param {number} parkingId - ID du parking
-   * @param {Object} imageData - Données de l'image (filePath, fileUrl, fileSize)
-   * @param {boolean} isPrimary - Image principale ou non
-   */
+
   saveParkingImageMetadata: async (parkingId, imageData, isPrimary = false) => {
     try {
       const response = await api.post(`/parking-images/${parkingId}`, {
@@ -166,33 +199,25 @@ const imageService = {
         fileSize: imageData.fileSize,
         isPrimary: isPrimary,
       });
-      console.log('Metadata sauvegardée:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Erreur sauvegarde metadata:', error);
+      console.error('[Metadata] Error:', error.message);
       throw error;
     }
   },
 
-  /**
-   * Récupérer les images d'un parking
-   * @param {number} parkingId - ID du parking
-   */
+
   getParkingImages: async (parkingId) => {
     try {
       const response = await api.get(`/parking-images/${parkingId}`);
       return response.data;
     } catch (error) {
-      console.error('Erreur récupération images:', error);
+      console.error('[Images] Load error:', error.message);
       throw error;
     }
   },
 
-  /**
-   * Supprimer une image (Storage + metadata)
-   * @param {number} parkingId - ID du parking
-   * @param {string} filePath - Chemin du fichier dans Supabase
-   */
+
   deleteParkingImage: async (parkingId, filePath) => {
     try {
       // Supprimer de Supabase Storage
@@ -201,25 +226,34 @@ const imageService = {
         .remove([filePath]);
 
       if (storageError) {
-        console.error('Erreur suppression Storage:', storageError);
+        console.error('[Storage] Error:', storageError);
         throw storageError;
       }
 
       // Supprimer metadata de PostgreSQL
       await api.delete(`/parking-images/${parkingId}/file?filePath=${encodeURIComponent(filePath)}`);
 
-      console.log('Image supprimée avec succès');
       return { success: true };
     } catch (error) {
-      console.error('Erreur suppression image:', error);
+      console.error('[Storage] Error:', error.message);
       throw error;
     }
   },
 
-  /**
-   * Afficher un menu pour choisir entre galerie et caméra
-   */
+
   showImagePickerOptions: () => {
+    if (Platform.OS === 'web') {
+      return new Promise((resolve) => {
+        // Sur Web, on ouvre directement la galerie par défaut ou on demande via confirm
+        const choice = window.confirm("Voulez-vous ouvrir la galerie ? (Annuler pour utiliser la caméra)");
+        if (choice) {
+          imageService.pickFromGallery(5).then(images => resolve({ source: 'gallery', images }));
+        } else {
+          imageService.takePhoto().then(image => resolve({ source: 'camera', images: image ? [image] : null }));
+        }
+      });
+    }
+
     return new Promise((resolve) => {
       Alert.alert(
         'Ajouter une photo',
@@ -258,20 +292,11 @@ const imageService = {
     });
   },
 
-  /**
-   * Upload une image de preuve de litige vers Supabase
-   * @param {string} imageUri - URI de l'image à uploader
-   * @param {number} disputeId - ID du litige
-   * @param {number} userId - ID de l'utilisateur
-   * @returns {Promise<Object>} - Résultat avec success, imageUrl ou error
-   */
+
   uploadDisputeProofImage: async (imageUri, disputeId, userId) => {
     try {
       const fileName = `proof_${Date.now()}.jpg`;
 
-      console.log('📤 Upload preuve litige - Dispute:', disputeId);
-
-      // Convertir l'image en base64
       const response = await fetch(imageUri);
       const blob = await response.blob();
 
@@ -285,7 +310,6 @@ const imageService = {
         reader.readAsDataURL(blob);
       });
 
-      // Envoyer au backend
       const uploadResponse = await api.post(`/dispute-proofs/${disputeId}/upload`, {
         imageBase64: base64,
         fileName: fileName,
@@ -293,15 +317,13 @@ const imageService = {
         disputeId: disputeId
       });
 
-      console.log(' Preuve uploadée:', uploadResponse.data);
-
       return {
         success: true,
         imageUrl: uploadResponse.data.proofUrl,
         data: uploadResponse.data
       };
     } catch (error) {
-      console.error('Erreur: Erreur upload preuve:', error);
+      console.error('[Dispute] Error:', error.message);
       return {
         success: false,
         error: error.message

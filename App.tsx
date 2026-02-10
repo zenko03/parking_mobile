@@ -8,8 +8,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 //navigation
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import type { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
 
-// Firebase & Notifications
+// Firebase & Notifications (compatible web via imports conditionnels internes)
 import {
   requestUserPermission,
   getFCMToken,
@@ -19,7 +20,6 @@ import {
   onNotificationOpenedApp,
   getInitialNotification,
 } from './src/config/firebase';
-import { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
 import { registerDeviceToken } from './src/services/notificationService';
 import { navigationRef, navigateFromNotification } from './src/services/navigationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -50,29 +50,19 @@ import ReportIssue from "./src/screens/forms/ReportIssue/ReportIssue";
 import MyDisputes from "./src/screens/lists/MyDisputes/MyDisputes";
 import Dashboard from "./src/screens/main/Dashboard/Dashboard";
 import SplashScreen from "./src/screens/auth/SplashScreen/SplashScreen";
+import WebFonts from "./src/components/WebFonts";
 
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+
+
   // Initialiser FCM au démarrage de l'app
   React.useEffect(() => {
-    console.log(' DÉBUT initialisation FCM...');
     const initializeFCM = async () => {
       try {
-        console.log('📝 Étape 1: Demande permissions...');
-        // 1. Demander les permissions
-        const hasPermission = await requestUserPermission();
-        console.log(' Permissions résultat:', hasPermission);
-        if (!hasPermission) {
-          console.warn(' Permissions notifications non accordées');
-          return;
-        }
-
-        console.log(' Étape 2: Récupération token FCM...');
-        // 2. Obtenir le token FCM
         const fcmToken = await getFCMToken();
-        console.log(' Token FCM reçu:', fcmToken ? 'OUI' : 'NON');
         if (fcmToken) {
           // Récupérer l'ID utilisateur depuis AsyncStorage (après login)
           const userJson = await AsyncStorage.getItem('user');
@@ -83,10 +73,7 @@ export default function App() {
             if (userId) {
               // Enregistrer le token dans le backend
               await registerDeviceToken(userId, fcmToken, Platform.OS);
-              console.log(' Token FCM enregistré pour user:', userId);
             }
-          } else {
-            console.log(' Utilisateur non connecté, token sera enregistré après login');
           }
         }
 
@@ -104,7 +91,7 @@ export default function App() {
 
         // 4. Écouter les notifications en foreground (app ouverte)
         const unsubscribeForeground = onForegroundMessage((remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
-          console.log('📬 Notification foreground reçue:', remoteMessage.notification?.title);
+
 
           // Afficher une alerte avec option de navigation
           const title = remoteMessage.notification?.title || 'Nouvelle notification';
@@ -133,14 +120,14 @@ export default function App() {
 
         // 6. Écouter les clics sur notifications (app en background)
         onNotificationOpenedApp((remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
-          console.log('👆 Notification cliquée (app background):', remoteMessage.data);
+
           // Naviguer vers l'écran approprié
           navigateFromNotification(remoteMessage.data || {});
         });
 
         // 7. Vérifier si l'app a été ouverte via une notification (app fermée)
         getInitialNotification((remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
-          console.log(' App ouverte via notification:', remoteMessage.data);
+
           // Attendre un peu que la navigation soit prête puis naviguer
           setTimeout(() => {
             navigateFromNotification(remoteMessage.data || {});
@@ -153,8 +140,7 @@ export default function App() {
           unsubscribeForeground();
         };
       } catch (error: any) {
-        console.error(' Erreur initialisation FCM:', error);
-        console.error(' Stack trace:', error?.stack);
+        console.error('[FCM] Initialization error:', error.message);
       }
     };
 
@@ -164,6 +150,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <WebFonts />
       <GestureHandlerRootView style={{ flex: 1 }}>
         <PaperProvider>
           <NavigationContainer ref={navigationRef}>

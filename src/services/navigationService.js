@@ -1,41 +1,26 @@
-﻿/**
- * Service de navigation global
- * Permet de naviguer depuis n'importe où dans l'app (même en dehors des composants React)
- * Utilisé notamment pour la navigation depuis les notifications push
- */
-
+﻿
 import { createNavigationContainerRef } from '@react-navigation/native';
 
 // Référence globale au NavigationContainer
 export const navigationRef = createNavigationContainerRef();
 
-/**
- * Naviguer vers un écran depuis n'importe où
- * @param {string} name - Nom de l'écran
- * @param {object} params - Paramètres de navigation
- */
+
 export const navigate = (name, params) => {
     if (navigationRef.isReady()) {
         navigationRef.navigate(name, params);
     } else {
-        console.warn(' Navigation non prête, impossible de naviguer vers:', name);
+        console.warn('[Navigation] Not ready, cannot navigate to:', name);
     }
 };
 
-/**
- * Naviguer en fonction du type de notification
- * @param {object} data - Données de la notification (remoteMessage.data)
- */
+
 export const navigateFromNotification = (data) => {
     if (!data || !data.type) {
-        console.log('️ Notification sans type, navigation vers Notifications');
         navigate('Notifications');
         return;
     }
 
     const { type, requestId, disputeId, reservationId, parkingId } = data;
-
-    console.log('🔔 Navigation depuis notification:', type);
 
     switch (type) {
         // ============== NOTIFICATIONS POUR LE LOCATAIRE ==============

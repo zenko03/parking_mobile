@@ -57,7 +57,7 @@ export default function ReservationList() {
     const now = new Date();
     const startDateValue = reservation.startDateTime || reservation.start_datetime;
     const endDateValue = reservation.endDateTime || reservation.end_datetime;
-    
+
     const startDate = startDateValue ? new Date(startDateValue) : null;
     const endDate = endDateValue ? new Date(endDateValue) : null;
 
@@ -113,7 +113,7 @@ export default function ReservationList() {
         clientName: reservation.clientName,
       };
     } catch (error) {
-      console.error('Erreur formatage réservation:', error, reservation);
+      console.error('[Reservation] Format error:', error.message);
       // Retourner une réservation par défaut en cas d'erreur
       return {
         id: `error-${index}`,
@@ -147,18 +147,14 @@ export default function ReservationList() {
 
       let data;
       if (activeTab === 'client') {
-        // Mes réservations (en tant que client)
         data = await reservationService.getUserReservations(userId);
-        console.log('📥 Mes réservations:', data?.length || 0);
       } else {
-        // Réservations sur mes parkings (en tant que propriétaire)
         data = await reservationService.getOwnerParkingReservations(userId);
-        console.log('📤 Réservations sur mes parkings:', data?.length || 0);
       }
 
       // Vérifier que data est un tableau
       if (!Array.isArray(data)) {
-        console.warn('Les données reçues ne sont pas un tableau:', data);
+        console.warn('[Reservation] Received data is not an array');
         setReservations([]);
         return;
       }
@@ -172,7 +168,7 @@ export default function ReservationList() {
       setReservations(formattedData);
       setFilteredReservations(formattedData);
     } catch (error) {
-      console.error('Erreur chargement réservations:', error);
+      console.error('[Reservation] Load error:', error.message);
       setError('Impossible de charger les réservations');
     } finally {
       setLoading(false);
@@ -182,7 +178,6 @@ export default function ReservationList() {
 
   // Ouvrir le modal de notation
   const handleOpenRatingModal = (reservation) => {
-    console.log(' Ouverture modal notation pour:', reservation.name);
     setSelectedReservation(reservation);
     setRatingModalVisible(true);
   };
@@ -207,16 +202,11 @@ export default function ReservationList() {
         reservationId: selectedReservation?.id,
       };
 
-      console.log('📤 Soumission notation:', fullRatingData);
 
       await ratingService.submitRating(fullRatingData);
-
-      // Marquer la réservation comme notée
       setRatedReservations(prev => new Set([...prev, selectedReservation?.id]));
-
-      console.log(' Notation soumise avec succès');
     } catch (error) {
-      console.error('Erreur: Erreur soumission notation:', error);
+      console.error('[Rating] Submit error:', error.message);
       throw error; // Propager l'erreur pour que le modal l'affiche
     }
   };

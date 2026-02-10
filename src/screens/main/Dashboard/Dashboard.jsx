@@ -104,7 +104,7 @@ const Dashboard = ({ navigation }) => {
                             iconBgColor={`${colors.primary.bright}20`}
                             title="Revenus du mois"
                             value={formatPrice(summary?.revenusMoisCourant)}
-                            evolution={summary?.evolutionRevenus || 0}
+                            evolution={parseFloat(summary?.evolutionRevenus) || 0}
                             style={styles.kpiCardHalf}
                         />
                         <KPICard
@@ -113,7 +113,7 @@ const Dashboard = ({ navigation }) => {
                             iconBgColor={`${colors.info.main}20`}
                             title="Réservations"
                             value={summary?.reservationsMoisCourant || 0}
-                            evolution={summary?.evolutionReservations || 0}
+                            evolution={parseFloat(summary?.evolutionReservations) || 0}
                             style={styles.kpiCardHalf}
                         />
                     </View>
@@ -125,7 +125,7 @@ const Dashboard = ({ navigation }) => {
                         title="Parkings disponibles"
                         value={`${summary?.placesDisponibles || 0}/${summary?.capaciteTotale || 0}`}
                         subtitle="Capacité totale"
-                        occupationRate={summary?.tauxOccupation || 0}
+                        occupationRate={parseFloat(summary?.tauxOccupation) || 0}
                         style={styles.kpiCardFull}
                     />
                 </View>
@@ -135,7 +135,7 @@ const Dashboard = ({ navigation }) => {
                     <WeeklyChart
                         data={weeklyRevenue || []}
                         title="Aperçu de la semaine"
-                        totalRevenue={weeklyRevenue?.[0]?.revenusSemaine || 0}
+                        totalRevenue={parseFloat(weeklyRevenue?.[0]?.revenusSemaine) || 0}
                         evolution={calculateWeeklyEvolution(weeklyRevenue)}
                     />
                 </View>
@@ -174,16 +174,16 @@ const Dashboard = ({ navigation }) => {
     );
 };
 
-// Helper function pour calculer l'évolution hebdomadaire
+// Helper function pour calculer l'evolution hebdomadaire
 const calculateWeeklyEvolution = (weeklyData) => {
     if (!weeklyData || weeklyData.length === 0) return 0;
 
-    const currentWeek = weeklyData[0]?.revenusSemaine || 0;
-    const previousWeek = weeklyData[0]?.revenusSemainePrecedente || 0;
+    const currentWeek = parseFloat(weeklyData[0]?.revenusSemaine) || 0;
+    const previousWeek = parseFloat(weeklyData[0]?.revenusSemainePrecedente) || 0;
 
     if (previousWeek === 0) return 0;
 
-    return ((currentWeek - previousWeek) / previousWeek * 100).toFixed(1);
+    return parseFloat(((currentWeek - previousWeek) / previousWeek * 100).toFixed(1));
 };
 
 // Helper function pour gérer le clic sur une notification

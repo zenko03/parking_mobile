@@ -1,46 +1,32 @@
 import api from '../config/api';
 
-// Base path pour l'API des parkings
 const BASE_PATH = '/parkings';
 
-/**
- * Service pour la gestion des parkings
- */
+
 const parkingService = {
-  /**
-   * Récupérer tous les parkings
-   * @returns {Promise} Liste des parkings
-   */
+
   getAllParkings: async () => {
     try {
       const response = await api.get(BASE_PATH);
       return response.data;
     } catch (error) {
-      console.error('Erreur lors de la récupération des parkings:', error);
+      console.error('[Parking] Fetch all error:', error.message);
       throw error;
     }
   },
 
-  /**
-   * Récupérer un parking par son ID
-   * @param {number} id - ID du parking
-   * @returns {Promise} Détails du parking
-   */
+
   getParkingById: async (id) => {
     try {
       const response = await api.get(`${BASE_PATH}/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Erreur lors de la récupération du parking ${id}:`, error);
+      console.error(`[Parking] Fetch ${id} error:`, error.message);
       throw error;
     }
   },
 
-  /**
-   * Rechercher des parkings avec filtres
-   * @param {Object} filters - Filtres de recherche
-   * @returns {Promise} Liste des parkings filtrés
-   */
+
   searchParkings: async (filters = {}) => {
     try {
       const params = {};
@@ -53,89 +39,63 @@ const parkingService = {
       if (filters.numberOfVehicles) params.numberOfVehicles = filters.numberOfVehicles;
       if (filters.sortBy) params.sortBy = filters.sortBy;
 
-      console.log('📡 Recherche parkings avec filtres:', filters);
-      console.log('📡 Paramètres envoyés:', params);
-
       const response = await api.get(`${BASE_PATH}/search`, { params });
-
-      console.log(' Résultats reçus:', response.data.length, 'parkings');
-
       return response.data;
     } catch (error) {
-      console.error('Erreur: Erreur lors de la recherche de parkings:', error);
-      console.error('Erreur: Status:', error.response?.status);
-      console.error('Erreur: Data:', error.response?.data);
+      console.error('[Parking] Search error:', error.message);
       throw error;
     }
   },
 
-  /**
-   * Créer un nouveau parking
-   * @param {Object} parkingData - Données du parking
-   * @returns {Promise} Parking créé
-   */
+
   createParking: async (parkingData) => {
     try {
       const response = await api.post(BASE_PATH, parkingData);
       return response.data;
     } catch (error) {
-      console.error('Erreur lors de la création du parking:', error);
+      console.error('[Parking] Create error:', error.message);
       throw error;
     }
   },
 
-  /**
-   * Mettre à jour un parking
-   * @param {number} id - ID du parking
-   * @param {Object} parkingData - Nouvelles données
-   * @returns {Promise} Parking mis à jour
-   */
+
   updateParking: async (id, parkingData) => {
     try {
       const response = await api.put(`/parkings/${id}`, parkingData);
       return response.data;
     } catch (error) {
-      console.error(`Erreur lors de la mise à jour du parking ${id}:`, error);
+      console.error(`[Parking] Update ${id} error:`, error.message);
       throw error;
     }
   },
 
-  /**
-   * Supprimer un parking
-   * @param {number} id - ID du parking
-   * @returns {Promise}
-   */
   deleteParking: async (id) => {
     try {
       await api.delete(`/parkings/${id}`);
     } catch (error) {
-      console.error(`Erreur lors de la suppression du parking ${id}:`, error);
+      console.error(`[Parking] Delete ${id} error:`, error.message);
       throw error;
     }
   },
 
-  /**
-   * Récupérer les véhicules d'un parking
-   * @param {number} parkingId - ID du parking
-   * @returns {Promise} Liste des véhicules du parking
-   */
+
   getParkingVehicles: async (parkingId) => {
     try {
-      const response = await api.get(`/parking-vehicles/by-parking/${parkingId}`);
-      return response.data;
+      // Tenter le premier endpoint
+      try {
+        const response = await api.get(`/parking-vehicles/by-parking/${parkingId}`);
+        return response.data;
+      } catch (e) {
+        // Fallback vers le second endpoint probable
+        const response = await api.get(`${BASE_PATH}/${parkingId}/vehicles`);
+        return response.data;
+      }
     } catch (error) {
-      console.error(`Erreur lors de la récupération des véhicules du parking ${parkingId}:`, error);
+      console.error(`[Parking] Vehicles load error (${parkingId}):`, error.message);
       throw error;
     }
   },
 
-  /**
-   * Récupérer la disponibilité d'un parking par type de véhicule
-   * @param {number} parkingId - ID du parking
-   * @param {string} startDateTime - Date/heure de début (ISO format)
-   * @param {string} endDateTime - Date/heure de fin (ISO format)
-   * @returns {Promise} Disponibilité par type de véhicule
-   */
   getParkingAvailability: async (parkingId, startDateTime, endDateTime) => {
     try {
       const params = {};
@@ -145,22 +105,7 @@ const parkingService = {
       const response = await api.get(`/parkings/${parkingId}/availability`, { params });
       return response.data;
     } catch (error) {
-      console.error(`Erreur lors de la récupération de la disponibilité du parking ${parkingId}:`, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Récupérer les véhicules d'un parking
-   * @param {number} parkingId - ID du parking
-   * @returns {Promise} Liste des véhicules du parking
-   */
-  getParkingVehicles: async (parkingId) => {
-    try {
-      const response = await api.get(`${BASE_PATH}/${parkingId}/vehicles`);
-      return response.data;
-    } catch (error) {
-      console.error(`Erreur lors de la récupération des véhicules du parking ${parkingId}:`, error);
+      console.error(`[Parking] Availability load error (${parkingId}):`, error.message);
       throw error;
     }
   },

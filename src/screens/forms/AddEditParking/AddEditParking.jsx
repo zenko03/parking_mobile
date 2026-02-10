@@ -15,8 +15,13 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Geolocation from '@react-native-community/geolocation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// Conditional import for Geolocation (native only)
+let Geolocation = null;
+if (Platform.OS !== 'web') {
+  Geolocation = require('@react-native-community/geolocation');
+}
 import ownerService from '../../../services/ownerService';
 import vehicleService from '../../../services/vehicleService';
 import imageService from '../../../services/imageService';
@@ -41,12 +46,12 @@ const AddEditParking = ({ navigation, route }) => {
   const [hourlyRate, setHourlyRate] = useState('');
   const [selectedVehicles, setSelectedVehicles] = useState([]); // Array of { vehicleId, count }
   const [availableVehicles, setAvailableVehicles] = useState([]);
-  
+
   // Photos state
   const [existingPhotos, setExistingPhotos] = useState([]); // Photos déjà en DB
   const [selectedPhotos, setSelectedPhotos] = useState([]); // Nouvelles photos à uploader
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
-  
+
   // Localisation states
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
@@ -69,7 +74,7 @@ const AddEditParking = ({ navigation, route }) => {
         setUserId(user.Id_Users);
       }
     } catch (error) {
-      console.error('Erreur chargement utilisateur:', error);
+      console.error('[User] Load error:', error.message);
     }
   };
 
@@ -78,7 +83,7 @@ const AddEditParking = ({ navigation, route }) => {
       const vehicles = await vehicleService.getAllVehicles();
       setAvailableVehicles(vehicles);
     } catch (error) {
-      console.error('Erreur chargement types véhicules:', error);
+      console.error('[Vehicles] Load error:', error.message);
     }
   };
 
@@ -86,59 +91,43 @@ const AddEditParking = ({ navigation, route }) => {
     try {
       setLoading(true);
       const parking = await ownerService.getParkingById(parkingId);
-      
+
       setLabel(parking.label || '');
       setHourlyRate(parking.hourlyRate?.toString() || '');
-      
-      // Charger adresse et description directement
       setAddress(parking.address || '');
       setDescription(parking.description || '');
-      
-      // Charger les véhicules associés
+
       try {
         const parkingVehicles = await ownerService.getParkingVehicles(parkingId);
-        console.log(' Données véhicules reçues du backend:', JSON.stringify(parkingVehicles, null, 2));
-        
-        const vehiclesData = parkingVehicles.map((pv) => {
-          console.log('🔍 Parsing vehicle:', pv);
-          // Utiliser id_Vehicles (minuscule) car Jackson sérialise en camelCase
-          const vehicleId = pv.vehicle?.id_Vehicles  // Bon attribut (minuscule i)
-            || pv.vehicle?.Id_Vehicles               // Fallback
-            || 0;
-          
-          const count = pv.numbers || 1;
-          
-          console.log(` Véhicule mappé - ID: ${vehicleId}, Count: ${count}`);
-          
-          return {
-            vehicleId,
-            count,
-          };
-        });
-        
-        console.log(' Véhicules finaux:', vehiclesData);
+        const vehiclesData = parkingVehicles.map((pv) => ({
+          vehicleId: pv.vehicle?.id_Vehicles || pv.vehicle?.Id_Vehicles || 0,
+          count: pv.numbers || 1,
+        }));
         setSelectedVehicles(vehiclesData);
       } catch (error) {
-        console.error('Erreur: Erreur chargement véhicules:', error);
-        // Ne pas bloquer si les véhicules ne peuvent pas être chargés
+        console.error('[Parking] Erreur chargement vehicules:', error);
       }
-      
-      // Charger les photos existantes
+
       try {
         const images = await imageService.getParkingImages(parkingId);
-        console.log(` ${images.length} photo(s) existante(s) chargée(s)`);
-        // Convertir les URLs Supabase en URLs proxy
         const imagesWithProxy = convertImagesToProxy(images);
         setExistingPhotos(imagesWithProxy);
       } catch (error) {
-        console.error('Erreur: Erreur chargement photos:', error);
-        // Ne pas bloquer si les photos ne peuvent pas être chargées
+        console.error('[Parking] Photos load error:', error.message);
       }
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de charger les données du parking');
+      showAlert('Erreur', 'Impossible de charger les données du parking');
       navigation.goBack();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const showAlert = (title, message) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
     }
   };
 
@@ -187,33 +176,61 @@ const AddEditParking = ({ navigation, route }) => {
 
   // Fonction pour obtenir la position GPS actuelle
   const getCurrentLocation = async () => {
-    const hasPermission = await requestLocationPermission();
-    
-    if (!hasPermission) {
-      Alert.alert('Permission refusée', 'Impossible d\'accéder à votre position. Veuillez activer la localisation dans les paramètres.');
+    setLoadingLocation(true);
+
+    // Sur Web, utiliser l'API navigator.geolocation
+    if (Platform.OS === 'web') {
+      if (!navigator.geolocation) {
+        setLoadingLocation(false);
+        showAlert('Erreur', 'La geolocalisation n\'est pas supportee par ce navigateur.');
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLatitude(position.coords.latitude);
+          setLongitude(position.coords.longitude);
+          setLoadingLocation(false);
+          showAlert('Succes', 'Position GPS obtenue !');
+        },
+        (error) => {
+          setLoadingLocation(false);
+          console.error('[GPS] Web Error:', error.message);
+          showAlert(
+            'Erreur GPS',
+            'Impossible d\'obtenir votre position. Verifiez les permissions.'
+          );
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      );
       return;
     }
 
-    setLoadingLocation(true);
-    
+    // Sur mobile, utiliser react-native-community/geolocation
+    if (!Geolocation) {
+      setLoadingLocation(false);
+      Alert.alert('Erreur', 'Geolocalisation non disponible');
+      return;
+    }
+
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      setLoadingLocation(false);
+      showAlert('Permission refusee', 'Impossible d\'acceder a votre position.');
+      return;
+    }
+
     Geolocation.getCurrentPosition(
       (position) => {
         setLatitude(position.coords.latitude);
         setLongitude(position.coords.longitude);
         setLoadingLocation(false);
-        Alert.alert('Succès', 'Position GPS obtenue !');
+        showAlert('Succes', 'Position GPS obtenue !');
       },
       (error) => {
         setLoadingLocation(false);
-        console.error('Erreur GPS:', error);
-        Alert.alert(
-          'Erreur GPS',
-          'Impossible d\'obtenir votre position. Vérifiez que le GPS est activé et réessayez.',
-          [
-            { text: 'OK' },
-            { text: 'Saisir manuellement', onPress: () => setShowMapModal(true) }
-          ]
-        );
+        console.error('[GPS] Mobile Error:', error);
+        showAlert('Erreur GPS', 'Impossible d\'obtenir votre position.');
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
     );
@@ -245,7 +262,7 @@ const AddEditParking = ({ navigation, route }) => {
 
     try {
       const result = await imageService.showImagePickerOptions();
-      
+
       if (result.images && result.images.length > 0) {
         const totalPhotos = existingPhotos.length + selectedPhotos.length;
         const remainingSlots = 5 - totalPhotos;
@@ -255,7 +272,7 @@ const AddEditParking = ({ navigation, route }) => {
           fileSize: img.fileSize,
           type: img.type,
         }));
-        
+
         setSelectedPhotos([...selectedPhotos, ...newPhotos]);
       }
     } catch (error) {
@@ -265,10 +282,15 @@ const AddEditParking = ({ navigation, route }) => {
   };
 
   const handleRemovePhoto = (index) => {
-    Alert.alert(
-      'Supprimer la photo',
-      'Êtes-vous sûr de vouloir supprimer cette photo ?',
-      [
+    const message = 'Etes-vous sur de vouloir supprimer cette photo ?';
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) {
+        const newPhotos = [...selectedPhotos];
+        newPhotos.splice(index, 1);
+        setSelectedPhotos(newPhotos);
+      }
+    } else {
+      Alert.alert('Supprimer la photo', message, [
         { text: 'Annuler', style: 'cancel' },
         {
           text: 'Supprimer',
@@ -279,63 +301,47 @@ const AddEditParking = ({ navigation, route }) => {
             setSelectedPhotos(newPhotos);
           },
         },
-      ]
-    );
+      ]);
+    }
   };
-  
+
   const handleDeleteExistingPhoto = async (photo) => {
-    Alert.alert(
-      'Supprimer la photo',
-      'Voulez-vous vraiment supprimer cette photo ?',
-      [
+    const message = 'Voulez-vous vraiment supprimer cette photo ?';
+    
+    const deleteAction = async () => {
+      try {
+        await imageService.deleteParkingImage(parkingId, photo.filePath);
+        setExistingPhotos(prev => prev.filter(p => p.idParkingImage !== photo.idParkingImage));
+        showAlert('Succes', 'Photo supprimee');
+      } catch (error) {
+        console.error('[Photo] Delete error:', error.message);
+        showAlert('Erreur', 'Impossible de supprimer la photo');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) deleteAction();
+    } else {
+      Alert.alert('Supprimer la photo', message, [
         { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await imageService.deleteParkingImage(parkingId, photo.filePath);
-              setExistingPhotos(prev => prev.filter(p => p.idParkingImage !== photo.idParkingImage));
-              Alert.alert('Succès', 'Photo supprimée');
-            } catch (error) {
-              console.error('Erreur suppression photo:', error);
-              Alert.alert('Erreur', 'Impossible de supprimer la photo');
-            }
-          },
-        },
-      ]
-    );
+        { text: 'Supprimer', style: 'destructive', onPress: deleteAction },
+      ]);
+    }
   };
 
   const uploadPhotos = async (parkingIdToUse) => {
     try {
-      console.log(' Début upload photos - Parking ID:', parkingIdToUse, 'User ID:', userId);
       setUploadingPhotos(true);
-      
-      // Vérifier si une photo principale existe déjà
       const hasPrimaryPhoto = existingPhotos.some(p => p.isPrimary);
-      
+
       for (let i = 0; i < selectedPhotos.length; i++) {
         const photo = selectedPhotos[i];
-        // Première nouvelle photo = primaire UNIQUEMENT si aucune photo principale existante
         const isPrimary = !hasPrimaryPhoto && i === 0;
-        console.log(`📤 Upload photo ${i + 1}/${selectedPhotos.length}:`, photo.fileName, isPrimary ? '(PRIMARY)' : '');
-        
-        // Upload vers backend (qui uploade vers Supabase)
-        const uploadedData = await imageService.uploadParkingImage(
-          photo,
-          parkingIdToUse,
-          userId,
-          isPrimary
-        );
-        console.log(' Photo uploadée:', uploadedData.fileUrl);
+        await imageService.uploadParkingImage(photo, parkingIdToUse, userId, isPrimary);
       }
-      
-      console.log(` ${selectedPhotos.length} photo(s) uploadée(s) avec succès`);
     } catch (error) {
-      console.error('Erreur: Erreur upload photos:', error);
-      console.error('Erreur: Détails erreur:', error.message, error.response?.data);
-      Alert.alert('Attention', 'Certaines photos n\'ont pas pu être uploadées: ' + error.message);
+      console.error('[Upload] Photo upload error:', error.message);
+      showAlert('Attention', 'Certaines photos n\'ont pas pu etre uploadees.');
     } finally {
       setUploadingPhotos(false);
     }
@@ -344,29 +350,28 @@ const AddEditParking = ({ navigation, route }) => {
 
   const validateForm = () => {
     if (!label.trim()) {
-      Alert.alert('Erreur', 'Veuillez saisir un nom pour le parking');
+      showAlert('Erreur', 'Veuillez saisir un nom pour le parking');
       return false;
     }
     if (!address.trim()) {
-      Alert.alert('Erreur', 'Veuillez saisir une adresse');
+      showAlert('Erreur', 'Veuillez saisir une adresse');
       return false;
     }
     if (!hourlyRate || parseFloat(hourlyRate) <= 0) {
-      Alert.alert('Erreur', 'Veuillez saisir un tarif horaire valide');
+      showAlert('Erreur', 'Veuillez saisir un tarif horaire valide');
       return false;
     }
     if (!latitude || !longitude) {
-      Alert.alert('Erreur', 'Veuillez définir la localisation du parking');
+      showAlert('Erreur', 'Veuillez définir la localisation du parking');
       return false;
     }
     if (selectedVehicles.length === 0) {
-      Alert.alert('Erreur', 'Veuillez sélectionner au moins un type de véhicule');
+      showAlert('Erreur', 'Veuillez sélectionner au moins un type de véhicule');
       return false;
     }
-    // Vérifier que tous les véhicules ont un nombre de places valide
     const invalidVehicle = selectedVehicles.find(v => !v.count || v.count <= 0);
     if (invalidVehicle) {
-      Alert.alert('Erreur', 'Veuillez saisir un nombre de places valide pour tous les véhicules');
+      showAlert('Erreur', 'Veuillez saisir un nombre de places valide pour tous les véhicules');
       return false;
     }
     return true;
@@ -375,17 +380,14 @@ const AddEditParking = ({ navigation, route }) => {
   const handleSave = async () => {
     if (!validateForm()) return;
     if (!userId) {
-      Alert.alert('Erreur', 'Utilisateur non identifié');
+      showAlert('Erreur', 'Utilisateur non identifié');
       return;
     }
 
     try {
       setSaving(true);
 
-      // Générer la localisation au format PostGIS
       const locationString = `SRID=4326;POINT(${longitude} ${latitude})`;
-
-      // Préparer les données des véhicules
       const vehicles = selectedVehicles.map((v) => ({
         vehicleId: v.vehicleId,
         count: v.count || 1,
@@ -398,51 +400,35 @@ const AddEditParking = ({ navigation, route }) => {
         hourlyRate: parseFloat(hourlyRate),
         localisation: locationString,
         isActive: true,
-        vehicles: vehicles, // Ajout des véhicules
+        vehicles: vehicles,
       };
 
       let savedParking;
       if (isEditMode) {
-        console.log(' Mode édition - ID parking:', parkingId);
         savedParking = await ownerService.updateParking(parkingId, parkingData);
-        console.log(' Parking mis à jour:', savedParking);
-        
-        // Upload photos si nouvelles photos sélectionnées
         if (selectedPhotos.length > 0) {
-          console.log(` Upload de ${selectedPhotos.length} photo(s) pour parking ID:`, parkingId);
           await uploadPhotos(parkingId);
         }
-        
-        Alert.alert('Succès', 'Parking modifié avec succès');
+        showAlert('Succes', 'Parking modifie avec succes');
       } else {
-        console.log(' Mode création - User ID:', userId);
-        parkingData.userId = userId; // Pour la création, on envoie userId
+        parkingData.userId = userId;
         savedParking = await ownerService.createParking(parkingData);
-        console.log(' Parking créé:', savedParking);
-        
-        // Upload photos après création
         if (selectedPhotos.length > 0) {
-          const parkingIdToUse = savedParking?.Id_Parking || savedParking?.id_parking || savedParking?.idParking;
-          console.log(` Upload de ${selectedPhotos.length} photo(s) pour parking ID:`, parkingIdToUse);
-          
-          if (parkingIdToUse) {
-            await uploadPhotos(parkingIdToUse);
+          const id = savedParking?.Id_Parking || savedParking?.id_parking || savedParking?.idParking;
+          if (id) {
+            await uploadPhotos(id);
           } else {
-            console.error('Erreur: Impossible de récupérer l\'ID du parking créé:', savedParking);
-            Alert.alert('Attention', 'Les photos n\'ont pas pu être uploadées');
+            console.error('[Parking] ID missing');
+            showAlert('Attention', 'Les photos n\'ont pas pu être uploadées');
           }
         }
-        
-        Alert.alert('Succès', 'Parking créé avec succès');
+        showAlert('Succes', 'Parking créé avec succès');
       }
 
       navigation.goBack();
     } catch (error) {
-      console.error('Erreur sauvegarde parking:', error);
-      Alert.alert(
-        'Erreur',
-        `Impossible de ${isEditMode ? 'modifier' : 'créer'} le parking`
-      );
+      console.error('[Parking] Save error:', error.message);
+      showAlert('Erreur', 'Impossible de sauvegarder le parking');
     } finally {
       setSaving(false);
     }
@@ -468,12 +454,12 @@ const AddEditParking = ({ navigation, route }) => {
       'airplane': 'airplane',
       'boat': 'boat',
     };
-    
+
     // Vérifier si c'est une icône connue
     if (iconMap[vehicleIconOrType]) {
       return iconMap[vehicleIconOrType];
     }
-    
+
     // Sinon, utiliser le fallback basé sur le nom du type
     const name = (vehicleIconOrType || '').toLowerCase();
     if (name.includes('moto') || name.includes('scooter') || name.includes('vélo')) {
@@ -488,7 +474,7 @@ const AddEditParking = ({ navigation, route }) => {
     if (name.includes('camion') || name.includes('truck')) {
       return 'trail-sign';
     }
-    
+
     // Défaut
     return 'car';
   };
@@ -553,7 +539,7 @@ const AddEditParking = ({ navigation, route }) => {
                 )}
               </View>
             ))}
-            
+
             {/* Nouvelles photos (pas encore uploadées) */}
             {selectedPhotos.map((photo, index) => (
               <View key={`new-${index}`} style={styles.photoContainer}>
@@ -571,7 +557,7 @@ const AddEditParking = ({ navigation, route }) => {
                 )}
               </View>
             ))}
-            
+
             {existingPhotos.length + selectedPhotos.length < 5 && (
               <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhotos}>
                 <View style={styles.addPhotoIcon}>
@@ -618,21 +604,21 @@ const AddEditParking = ({ navigation, route }) => {
           {/* GPS Location Section */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>POSITION GPS</Text>
-            
+
             {latitude && longitude ? (
               <View style={styles.locationDisplay}>
                 <View style={styles.locationInfo}>
                   <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
                   <View style={styles.locationCoords}>
                     <Text style={styles.locationText}>
-                       Lat: {latitude.toFixed(6)}
+                      Lat: {latitude.toFixed(6)}
                     </Text>
                     <Text style={styles.locationText}>
-                       Lng: {longitude.toFixed(6)}
+                      Lng: {longitude.toFixed(6)}
                     </Text>
                   </View>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.modifyButton}
                   onPress={() => setShowMapModal(true)}
                 >
@@ -642,7 +628,7 @@ const AddEditParking = ({ navigation, route }) => {
               </View>
             ) : (
               <View style={styles.locationButtons}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.locationButton, styles.gpsButton]}
                   onPress={getCurrentLocation}
                   disabled={loadingLocation}
@@ -656,8 +642,8 @@ const AddEditParking = ({ navigation, route }) => {
                     </>
                   )}
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={[styles.locationButton, styles.mapButton]}
                   onPress={() => setShowMapModal(true)}
                 >
@@ -688,7 +674,7 @@ const AddEditParking = ({ navigation, route }) => {
             {availableVehicles.map((vehicle) => {
               const selectedVehicle = selectedVehicles.find((v) => v.vehicleId === vehicle.Id_Vehicles);
               const isSelected = !!selectedVehicle;
-              
+
               return (
                 <View key={vehicle.Id_Vehicles} style={styles.vehicleItem}>
                   <TouchableOpacity
@@ -704,7 +690,7 @@ const AddEditParking = ({ navigation, route }) => {
                       {vehicle.types}
                     </Text>
                   </TouchableOpacity>
-                  
+
                   {isSelected && selectedVehicle && (
                     <View style={styles.vehicleCountContainer}>
                       <Text style={styles.vehicleCountLabel}>Places:</Text>
@@ -755,21 +741,21 @@ const AddEditParking = ({ navigation, route }) => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.modalCloseButton}
               onPress={() => setShowMapModal(false)}
             >
               <Ionicons name="close" size={24} color="#111827" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Sélectionner la position</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.modalConfirmButton}
               onPress={confirmMapLocation}
             >
               <Ionicons name="checkmark" size={24} color="#16a34a" />
             </TouchableOpacity>
           </View>
-          
+
           <ParkingMapPicker
             latitude={latitude}
             longitude={longitude}

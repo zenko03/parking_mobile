@@ -1,0 +1,5 @@
+﻿<svg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024'>
+  <rect width='1024' height='1024' fill='#A4E66E'/>
+  <text x='512' y='400' font-size='180' text-anchor='middle' font-family='Arial' font-weight='bold' fill='white'>UPark</text>
+  <text x='512' y='600' font-size='60' text-anchor='middle' font-family='Arial' fill='white'>Parking Mobile</text>
+</svg>

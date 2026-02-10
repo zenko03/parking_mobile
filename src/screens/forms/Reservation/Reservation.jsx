@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from "react-native";
-import DatePicker from "react-native-date-picker";
+import DatePicker from "../../../components/ui/AppDatePicker/AppDatePicker";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { reservationService, vehicleService, parkingService, authService, reservationRequestService } from "../../../services";
@@ -50,7 +50,7 @@ export default function ReservationScreen({ route, navigation }) {
       const vehicles = await vehicleService.getAllVehicles();
       setVehicleTypes(vehicles);
     } catch (error) {
-      console.error('Erreur chargement véhicules:', error);
+      console.error('[Vehicles] Load error:', error.message);
       // Utiliser les types par défaut si l'API échoue
       setVehicleTypes([
         { Id_Vehicles: 1, types: "Voiture", icon: "car-sport" },
@@ -69,22 +69,15 @@ export default function ReservationScreen({ route, navigation }) {
 
       const data = await parkingService.getParkingAvailability(parkingId, startDateTime, endDateTime);
 
-      console.log('📊 Réponse API disponibilités:', data);
-      console.log('📊 Nombre de véhicules dans la réponse:', data.vehicleAvailabilities?.length);
-      console.log('📊 Horaires disponibilité:', data.availabilitySchedule);
-
-      // Créer un objet de disponibilité indexé par vehicleTypeId
       const availabilityMap = {};
-      availabilityMap.schedule = data.availabilitySchedule; // Stocker les horaires
+      availabilityMap.schedule = data.availabilitySchedule;
       data.vehicleAvailabilities.forEach(vehicle => {
         availabilityMap[vehicle.vehicleTypeId] = vehicle;
-        console.log(`    Véhicule ${vehicle.vehicleType} (ID ${vehicle.vehicleTypeId}): ${vehicle.availableCapacity}/${vehicle.totalCapacity} places`);
       });
 
       setAvailabilities(availabilityMap);
-      console.log(' Disponibilités stockées:', availabilityMap);
     } catch (error) {
-      console.error('Erreur chargement disponibilités:', error);
+      console.error('[Availability] Load error:', error.message);
     } finally {
       setLoadingAvailability(false);
     }
@@ -173,7 +166,7 @@ export default function ReservationScreen({ route, navigation }) {
 
       setCalculatedPrice(priceData.totalPrice || priceData);
     } catch (error) {
-      console.error('Erreur calcul prix:', error);
+      console.error('[Price] Calculation error:', error.message);
       // Calculer un prix estimé en cas d'erreur
       const hours = Math.ceil((endDate - startDate) / (1000 * 60 * 60));
       const hourlyRate = parseFloat(price) || 2.5;
@@ -251,37 +244,39 @@ export default function ReservationScreen({ route, navigation }) {
         quantity: 1
       }));
 
-      console.log(' Véhicules sélectionnés:', selectedVehicles);
-      console.log(' selectedTypes:', selectedTypes);
-
       const formattedStartDate = formatDateForBackend(startDate);
+
       const formattedEndDate = formatDateForBackend(endDate);
 
       if (mode === 'request') {
-        // MODE DEMANDE - Envoi sans paiement
         const requestData = {
-          requesterId: user.Id_Users, // ID de l'utilisateur qui fait la demande
-          announcementId: announcementId || parkingId, // Utiliser announcementId si fourni
+          requesterId: user.Id_Users,
+          announcementId: announcementId || parkingId,
           startDateTime: formattedStartDate,
           endDateTime: formattedEndDate,
           selectedVehicles: selectedVehicles,
           totalGain: calculatedPrice
         };
 
-        console.log('📤 Données demande complètes:', requestData);
 
         const reservationRequest = await reservationRequestService.createReservationRequest(requestData);
 
-        Alert.alert(
-          'Demande envoyée !',
-          'Votre demande a été envoyée au propriétaire. Vous serez notifié de sa réponse.',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('Mes Demandes')
-            }
-          ]
-        );
+        if (Platform.OS === 'web') {
+          // Sur web, Alert.alert peut être bloqué ou se comporter différemment
+          alert('Demande envoyée ! Votre demande a été envoyée au propriétaire. Vous serez notifié de sa réponse.');
+          navigation.navigate('Mes Demandes');
+        } else {
+          Alert.alert(
+            'Demande envoyée !',
+            'Votre demande a été envoyée au propriétaire. Vous serez notifié de sa réponse.',
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate('Mes Demandes')
+              }
+            ]
+          );
+        }
       } else {
         // MODE RÉSERVATION DIRECTE - Avec paiement immédiat
         const reservationData = {
@@ -296,22 +291,33 @@ export default function ReservationScreen({ route, navigation }) {
 
         const reservation = await reservationService.createReservation(reservationData);
 
-        Alert.alert('Succès', 'Réservation confirmée !', [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('Confirmation de la réservation', {
-              reservation: reservation,
-              parkingTitle: title,
-              totalPrice: calculatedPrice,
-              startDate: formattedStartDate,
-              endDate: formattedEndDate
-            })
-          }
-        ]);
+        if (Platform.OS === 'web') {
+          alert('Réservation confirmée !');
+          navigation.navigate('Confirmation de la réservation', {
+            reservation: reservation,
+            parkingTitle: title,
+            totalPrice: calculatedPrice,
+            startDate: formattedStartDate,
+            endDate: formattedEndDate
+          });
+        } else {
+          Alert.alert('Succès', 'Réservation confirmée !', [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Confirmation de la réservation', {
+                reservation: reservation,
+                parkingTitle: title,
+                totalPrice: calculatedPrice,
+                startDate: formattedStartDate,
+                endDate: formattedEndDate
+              })
+            }
+          ]);
+        }
       }
 
     } catch (error) {
-      console.error('Erreur réservation:', error);
+      console.error('[Reservation] Save error:', error.message);
       Alert.alert('Erreur', error.message || 'Impossible de créer la réservation');
     } finally {
       setLoading(false);
@@ -407,8 +413,8 @@ export default function ReservationScreen({ route, navigation }) {
                   const userJson = await AsyncStorage.getItem('user');
                   const user = userJson ? JSON.parse(userJson) : null;
                   Alert.alert(
-                    ' Connexion',
-                    `Token: ${token ? token.substring(0, 20) + '...' : 'Aucun'}\nUtilisateur ID: ${user?.Id_Users || 'N/A'}\nUsername: ${user?.user_name || 'N/A'}`
+                    'Connexion',
+                    `Token: ${token ? 'Present' : 'Aucun'}\nUtilisateur ID: ${user?.Id_Users || 'N/A'}`
                   );
                 }}
               >
@@ -421,7 +427,6 @@ export default function ReservationScreen({ route, navigation }) {
                   try {
                     setShowMenu(false);
                     await authService.logout();
-                    console.log(' Déconnexion réussie - Token supprimé');
                     Alert.alert('Déconnecté', 'Vous avez été déconnecté avec succès', [
                       {
                         text: 'OK', onPress: () => navigation.reset({
@@ -431,7 +436,7 @@ export default function ReservationScreen({ route, navigation }) {
                       }
                     ]);
                   } catch (error) {
-                    console.error('Erreur: Erreur lors de la déconnexion:', error);
+                    console.error('[Auth] Logout error:', error.message);
                     await AsyncStorage.clear();
                     navigation.navigate('Login');
                   }

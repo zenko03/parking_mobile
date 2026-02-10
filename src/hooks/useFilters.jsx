@@ -17,18 +17,17 @@ export default function useFilters() {
       try {
         setLoadingVehicles(true);
         const vehicles = await vehicleService.getAllVehicles();
-        
+
         // Mapper les données de l'API vers le format attendu
         const formattedVehicles = vehicles.map(v => ({
           id: v.id_Vehicles || v.Id_Vehicles,
           name: v.types,
           icon: v.icon
         }));
-        
+
         setVehicleOptions(formattedVehicles);
-        console.log(' Types de véhicules chargés:', formattedVehicles);
       } catch (error) {
-        console.error('Erreur: Erreur chargement types de véhicules:', error);
+        console.error('[Vehicles] Load error:', error.message);
         // En cas d'erreur, utiliser des valeurs par défaut
         setVehicleOptions([
           { id: 1, name: "Voiture", icon: "car-icon" },

@@ -27,10 +27,7 @@ const getVehicleIcon = (iconName) => {
 export default function ParkingDetails({ route, navigation }) {
   const { parkingId, title: initialTitle, address: initialAddress, price: initialPrice, rating: initialRating, image } = route.params;
 
-  console.log(' ParkingDetails - Paramètres reçus:');
-  console.log('  - parkingId:', parkingId);
-  console.log('  - initialTitle:', initialTitle);
-  console.log('  - route.params:', route.params);
+
 
   const [parking, setParking] = useState(null);
   const [availability, setAvailability] = useState(null);
@@ -46,7 +43,6 @@ export default function ParkingDetails({ route, navigation }) {
   const loadParkingDetails = async () => {
     try {
       setLoading(true);
-      console.log('📡 Chargement parking ID:', parkingId);
 
       if (!parkingId) {
         console.warn(' parkingId est undefined, utilisation des données initiales');
@@ -59,49 +55,38 @@ export default function ParkingDetails({ route, navigation }) {
       }
 
       const data = await parkingService.getParkingById(parkingId);
-      console.log(' Réponse API détails parking:', data);
-      console.log('   - ID retourné:', data.Id_Parking || data.id_Parking || data.id);
-      console.log('   - Label retourné:', data.label);
-      console.log('   - User retourné:', data.user);
       setParking(data);
 
       // Charger les images du parking
       try {
         const parkingImages = await imageService.getParkingImages(parkingId);
-        console.log(` ${parkingImages.length} image(s) chargée(s)`);
-        parkingImages.forEach((img, i) => {
-          console.log(`   Image ${i + 1}: ${img.fileUrl}`);
-        });
         // Convertir les URLs Supabase en URLs proxy
         const imagesWithProxy = convertImagesToProxy(parkingImages);
         setImages(imagesWithProxy);
       } catch (imgError) {
-        console.error(' Erreur chargement images:', imgError);
+        console.error('[Images] Load error:', imgError.message);
         // Ne pas bloquer si les images ne peuvent pas être chargées
       }
 
       // Charger la disponibilité du parking
       try {
         const availabilityData = await parkingService.getParkingAvailability(parkingId);
-        console.log(' Disponibilité parking:', availabilityData);
         setAvailability(availabilityData);
       } catch (availError) {
-        console.error(' Erreur chargement disponibilité:', availError);
+        console.error('[Availability] Load error:', availError.message);
         // Ne pas bloquer si la disponibilité n'est pas disponible
       }
 
       // Charger la note moyenne du parking
       try {
         const ratingData = await ratingService.getParkingAverageRating(parkingId);
-        console.log('⭐ Note moyenne parking:', ratingData);
         setAverageRating(ratingData.average);
       } catch (ratingError) {
-        console.error(' Erreur chargement note moyenne:', ratingError);
+        console.error('[Rating] Load error:', ratingError.message);
         // Ne pas bloquer si la note n'est pas disponible
       }
     } catch (error) {
-      console.error('Erreur: Erreur chargement détails:', error);
-      console.error('   Type erreur:', error.response?.status, error.message);
+      console.error('[ParkingDetails] Load error:', error.message);
       // Ne pas afficher d'alerte, utiliser les données initiales
       setParking({
         label: initialTitle,
@@ -284,7 +269,6 @@ export default function ParkingDetails({ route, navigation }) {
             <Text style={styles.price}>{price}</Text>
             <TouchableOpacity
               onPress={() => {
-                console.log('Navigation vers Réservation avec:', { parkingId, title, price: priceValue });
                 navigation.navigate("Réservation", {
                   parkingId,
                   title,

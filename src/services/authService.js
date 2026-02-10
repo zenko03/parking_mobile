@@ -1,17 +1,29 @@
 ﻿import api from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
-import messaging from '@react-native-firebase/messaging';
+import { Platform } from 'react-native';
 import { deactivateDeviceToken } from './notificationService';
+
+// Imports conditionnels des modules natifs (uniquement sur mobile)
+let GoogleSignin = null;
+let LoginManager = null;
+let AccessToken = null;
+let messaging = null;
+
+if (Platform.OS !== 'web') {
+  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+  const fbSdk = require('react-native-fbsdk-next');
+  LoginManager = fbSdk.LoginManager;
+  AccessToken = fbSdk.AccessToken;
+  messaging = require('@react-native-firebase/messaging').default;
+}
 
 // Base path pour l'API d'authentification
 const BASE_PATH = '/auth';
 
 
 const authService = {
-  
+
   login: async (user_name, password) => {
     try {
       const response = await api.post(`${BASE_PATH}/authenticate`, {
@@ -36,12 +48,12 @@ const authService = {
 
       return response.data;
     } catch (error) {
-      console.error('Erreur lors de la connexion:', error);
+      console.error('[Auth] Login error:', error.message);
       throw error;
     }
   },
 
- 
+
   register: async (userData) => {
     try {
       const response = await api.post(`${BASE_PATH}/register`, {
@@ -51,7 +63,7 @@ const authService = {
         email: userData.email,
         password: userData.password,
         phone_number: userData.phone_number,
-        role: 'USER', 
+        role: 'USER',
       });
 
       const { token, userId, userName, email } = response.data;
@@ -71,71 +83,71 @@ const authService = {
 
       return response.data;
     } catch (error) {
-      console.error('Erreur lors de l\'inscription:', error);
+      console.error('[Auth] Register error:', error.message);
       throw error;
     }
   },
 
- 
+
   logout: async () => {
     try {
-      console.log(' Déconnexion complète en cours...');
+      // Désactiver token FCM (seulement sur mobile)
+      if (Platform.OS !== 'web') {
+        try {
+          const fcmToken = await messaging().getToken();
+          const userJson = await AsyncStorage.getItem('user');
+          const userId = userJson ? JSON.parse(userJson).Id_Users : null;
 
-      try {
-        const fcmToken = await messaging().getToken();
-        const userJson = await AsyncStorage.getItem('user');
-        const userId = userJson ? JSON.parse(userJson).Id_Users : null;
-
-        if (fcmToken) {
-          await deactivateDeviceToken(fcmToken, userId);
-          console.log(' Token FCM désactivé en BDD');
+          if (fcmToken) {
+            await deactivateDeviceToken(fcmToken, userId);
+          }
+        } catch (fcmError) {
+          // Erreur silencieuse
         }
-      } catch (fcmError) {
-        console.log(' Erreur désactivation token FCM:', fcmError);
       }
 
       await AsyncStorage.removeItem('jwt_token');
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('username');
-      console.log(' Données de l\'app supprimées');
 
-      try {
-        const isGoogleSignedIn = await GoogleSignin.isSignedIn();
-        if (isGoogleSignedIn) {
-          await GoogleSignin.signOut();
-          console.log(' Déconnexion Google effectuée');
+      // Déconnexion Google (seulement sur mobile)
+      if (Platform.OS !== 'web') {
+        try {
+          const isGoogleSignedIn = await GoogleSignin.isSignedIn();
+          if (isGoogleSignedIn) {
+            await GoogleSignin.signOut();
+          }
+        } catch (googleError) {
+          // Erreur silencieuse
         }
-      } catch (googleError) {
-        console.log('️ Pas de session Google active');
       }
 
-      try {
-        const fbToken = await AccessToken.getCurrentAccessToken();
-        if (fbToken) {
-          await LoginManager.logOut();
-          console.log(' Déconnexion Facebook effectuée');
+      // Déconnexion Facebook (seulement sur mobile)
+      if (Platform.OS !== 'web') {
+        try {
+          const fbToken = await AccessToken.getCurrentAccessToken();
+          if (fbToken) {
+            await LoginManager.logOut();
+          }
+        } catch (facebookError) {
+          // Erreur silencieuse
         }
-      } catch (facebookError) {
-        console.log('️ Pas de session Facebook active');
       }
-
-      console.log(' Déconnexion complète terminée');
     } catch (error) {
-      console.error('Erreur: Erreur lors de la déconnexion:', error);
+      console.error('[Auth] Logout error:', error.message);
     }
   },
 
- 
+
   clearStorage: async () => {
     try {
       await AsyncStorage.clear();
-      console.log('Stockage nettoyé avec succès');
     } catch (error) {
-      console.error('Erreur lors du nettoyage du stockage:', error);
+      console.error('[Storage] Clear error:', error.message);
     }
   },
 
- 
+
   isAuthenticated: async () => {
     try {
       const token = await AsyncStorage.getItem('jwt_token');
@@ -153,7 +165,7 @@ const authService = {
     }
   },
 
-  
+
   isTokenExpired: async () => {
     try {
       const token = await AsyncStorage.getItem('jwt_token');
@@ -164,53 +176,77 @@ const authService = {
 
       return decoded.exp < (currentTime + 60);
     } catch (error) {
-      console.error('Erreur lors de la vérification du token:', error);
+      console.error('[Auth] Token check error:', error.message);
       return true; // En cas d'erreur, considérer comme expiré
     }
   },
 
- //recup connected user data
+  //recup connected user data
   getCurrentUser: async () => {
     try {
       const userJson = await AsyncStorage.getItem('user');
       return userJson ? JSON.parse(userJson) : null;
     } catch (error) {
-      console.error('Erreur lors de la récupération de l\'utilisateur:', error);
+      console.error('[User] Get current error:', error.message);
       return null;
     }
   },
 
- //connex google
-  loginWithGoogle: async () => {
-    try {
-      console.log(' Démarrage connexion Google...');
+  //connex google
+  loginWithGoogle: async (webToken = null) => {
+    if (Platform.OS === 'web') {
+      if (!webToken) {
+        throw new Error('Un token est requis pour la connexion Google sur le web');
+      }
 
-      
+      try {
+        const response = await api.post(`${BASE_PATH}/oauth/google`, {
+          token: webToken,
+          provider: 'google',
+        });
+
+        const { token, userId, userName, email } = response.data;
+
+        if (token) {
+          await AsyncStorage.setItem('jwt_token', token);
+          const userData = {
+            Id_Users: userId,
+            user_name: userName,
+            email: email,
+            oauth_provider: 'google',
+          };
+          await AsyncStorage.setItem('user', JSON.stringify(userData));
+          await AsyncStorage.setItem('username', userName);
+        }
+
+        return response.data;
+      } catch (error) {
+        console.error('[Auth] Google Web OAuth error:', error.message);
+        throw error;
+      }
+    }
+
+    try {
       await GoogleSignin.configure({
         webClientId: '918409349260-uqfla9m7seh995bjgojo6t7mt7e9smj6.apps.googleusercontent.com',
         offlineAccess: false,
       });
 
-      
+
       await GoogleSignin.hasPlayServices();
 
       try {
         await GoogleSignin.signOut();
-        console.log(' Déconnexion Google précédente effectuée');
       } catch (signOutError) {
-        console.log('️ Pas de session Google précédente');
+        // Ignorer
       }
 
-      
-      const userInfo = await GoogleSignin.signIn();
-      console.log(' Connexion Google réussie:', userInfo);
 
-      
+      const userInfo = await GoogleSignin.signIn();
       const tokens = await GoogleSignin.getTokens();
       const idToken = tokens.idToken;
-      console.log(' Token Google récupéré (nouveau)');
 
-      
+
       const response = await api.post(`${BASE_PATH}/oauth/google`, {
         token: idToken,
         provider: 'google',
@@ -218,7 +254,7 @@ const authService = {
 
       const { token, userId, userName, email } = response.data;
 
-      
+
       if (token) {
         await AsyncStorage.setItem('jwt_token', token);
 
@@ -233,10 +269,9 @@ const authService = {
         await AsyncStorage.setItem('username', userName);
       }
 
-      console.log(' Connexion Google complète');
       return response.data;
     } catch (error) {
-      console.error('Erreur: Erreur connexion Google:', error);
+      console.error('[Auth] Google OAuth error:', error.message);
 
       if (error.code === 'SIGN_IN_CANCELLED') {
         throw new Error('Connexion annulée');
@@ -250,21 +285,20 @@ const authService = {
     }
   },
 
- //connex facebook
+  //connex facebook
   loginWithFacebook: async () => {
-    try {
-      console.log(' Démarrage connexion Facebook...');
+    if (Platform.OS === 'web') {
+      throw new Error('Connexion Facebook non disponible sur le web');
+    }
 
-    
+    try {
       const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
 
       if (result.isCancelled) {
         throw new Error('Connexion Facebook annulée');
       }
 
-      console.log(' Connexion Facebook réussie');
 
-      
       const data = await AccessToken.getCurrentAccessToken();
 
       if (!data) {
@@ -272,9 +306,8 @@ const authService = {
       }
 
       const accessToken = data.accessToken;
-      console.log(' Token Facebook récupéré');
 
-      
+
       const response = await api.post(`${BASE_PATH}/oauth/facebook`, {
         token: accessToken,
         provider: 'facebook',
@@ -282,7 +315,7 @@ const authService = {
 
       const { token, userId, userName, email } = response.data;
 
-      
+
       if (token) {
         await AsyncStorage.setItem('jwt_token', token);
 
@@ -297,42 +330,38 @@ const authService = {
         await AsyncStorage.setItem('username', userName);
       }
 
-      console.log(' Connexion Facebook complète');
       return response.data;
     } catch (error) {
-      console.error('Erreur: Erreur connexion Facebook:', error);
+      console.error('[Auth] Facebook OAuth error:', error.message);
       throw error;
     }
   },
 
-  
+
   forgotPassword: async (email) => {
     try {
-      console.log(' Demande de réinitialisation pour:', email);
       const response = await api.post(`${BASE_PATH}/forgot-password`, { email });
       return response.data;
     } catch (error) {
-      console.error('Erreur forgot-password:', error);
+      console.error('[Auth] Forgot password error:', error.message);
       throw error;
     }
   },
 
-  
+
   verifyResetCode: async (email, code) => {
     try {
-      console.log(' Vérification du code pour:', email);
       const response = await api.post(`${BASE_PATH}/verify-reset-code`, { email, code });
       return response.data;
     } catch (error) {
-      console.error('Erreur verify-reset-code:', error);
+      console.error('[Auth] Verify reset code error:', error.message);
       throw error;
     }
   },
 
-  
+
   resetPassword: async (email, code, newPassword) => {
     try {
-      console.log(' Réinitialisation du mot de passe pour:', email);
       const response = await api.post(`${BASE_PATH}/reset-password`, {
         email,
         code,
@@ -340,11 +369,10 @@ const authService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Erreur reset-password:', error);
+      console.error('[Auth] Reset password error:', error.message);
       throw error;
     }
   },
 };
 
 export default authService;
-

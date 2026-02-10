@@ -1,31 +1,17 @@
 import api from '../config/api';
 
-/**
- * Service pour la gestion des annonces
- */
 const announcementService = {
-  /**
-   * Récupérer toutes les annonces publiées
-   * @returns {Promise} Liste des annonces publiées
-   */
   getPublishedAnnouncements: async () => {
     try {
       const response = await api.get('/announcements/published');
       return response.data;
     } catch (error) {
-      console.error('Erreur lors de la récupération des annonces publiées:', error);
+      console.error('[Announcement] Fetch published error:', error.message);
       throw error;
     }
   },
 
-  /**
-   * Recherche avancée d'annonces avec filtres
-   * @param {Object} filters - Filtres de recherche
-   * @param {string} filters.searchText - Texte de recherche (nom parking, adresse, description)
-   * @param {number} filters.vehicleTypeId - ID du type de véhicule
-   * @param {number} filters.minPlaces - Nombre minimum de places
-   * @returns {Promise} Liste des annonces filtrées
-   */
+
   searchAnnouncements: async (filters = {}) => {
     try {
       const params = new URLSearchParams();
@@ -43,141 +29,87 @@ const announcementService = {
       const queryString = params.toString();
       const url = queryString ? `/announcements/search?${queryString}` : '/announcements/search';
 
-      console.log('🔍 Recherche annonces:', url);
       const response = await api.get(url);
       return response.data;
     } catch (error) {
-      console.error('Erreur lors de la recherche des annonces:', error);
+      console.error('[Announcement] Search error:', error.message);
       throw error;
     }
   },
 
-  /**
-   * Récupérer les annonces d'un utilisateur
-   * @param {number} userId - ID de l'utilisateur
-   * @returns {Promise} Liste des annonces de l'utilisateur
-   */
+
   getMyAnnouncements: async (userId) => {
     try {
       const response = await api.get(`/announcements/user/${userId}`);
       return response.data;
     } catch (error) {
-      console.error('Erreur lors de la récupération de vos annonces:', error);
+      console.error('[Announcement] Fetch my error:', error.message);
       throw error;
     }
   },
 
-  /**
-   * Récupérer les annonces d'un parking
-   * @param {number} parkingId - ID du parking
-   * @returns {Promise} Liste des annonces du parking
-   */
+
   getAnnouncementsByParkingId: async (parkingId) => {
     try {
       const response = await api.get(`/announcements/parking/${parkingId}`);
       return response.data;
     } catch (error) {
-      console.error('Erreur lors de la récupération des annonces du parking:', error);
+      console.error('[Announcement] Fetch by parking error:', error.message);
       throw error;
     }
   },
 
-  /**
-   * Récupérer une annonce par son ID
-   * @param {number} id - ID de l'annonce
-   * @returns {Promise} Détails de l'annonce
-   */
+
   getAnnouncementById: async (id) => {
     try {
       const response = await api.get(`/announcements/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Erreur lors de la récupération de l'annonce ${id}:`, error);
+      console.error(`[Announcement] Fetch ${id} error:`, error.message);
       throw error;
     }
   },
 
-  /**
-   * Créer une annonce complète avec véhicules et disponibilités
-   * @param {Object} announcementData - Données de l'annonce
-   * @param {string} announcementData.description - Description de l'annonce
-   * @param {number} announcementData.parkingId - ID du parking
-   * @param {boolean} announcementData.isPublished - Statut de publication
-   * @param {Array} announcementData.vehicles - [{parkingVehicleId, numbers}]
-   * @param {Array} announcementData.availabilitiesDates - [{startDate, endDate, startHour, endHour}] (optionnel)
-   * @param {Array} announcementData.availabilitiesFrequence - [{dayOfWeekId, startHour, endHour}] (optionnel)
-   * @returns {Promise} Annonce créée
-   */
+
   createCompleteAnnouncement: async (announcementData) => {
     try {
-      console.log('📡 Création annonce complète:', announcementData);
       const response = await api.post('/announcements/complete', announcementData);
-      console.log(' Annonce créée:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Erreur: Erreur lors de la création de l\'annonce:', error);
-      console.error('Erreur: Réponse:', error.response?.data);
+      console.error('[Announcement] Create error:', error.message);
       throw error;
     }
   },
 
-  /**
-   * Mettre à jour une annonce
-   * @param {number} id - ID de l'annonce
-   * @param {Object} announcementData - Nouvelles données
-   * @returns {Promise} Annonce mise à jour
-   */
+
   updateAnnouncement: async (id, announcementData) => {
     try {
       const response = await api.put(`/announcements/${id}`, announcementData);
       return response.data;
     } catch (error) {
-      console.error(`Erreur lors de la mise à jour de l'annonce ${id}:`, error);
+      console.error(`[Announcement] Update ${id} error:`, error.message);
       throw error;
     }
   },
 
-  /**
-   * Basculer le statut de publication d'une annonce
-   * @param {number} id - ID de l'annonce
-   * @returns {Promise} Annonce avec statut mis à jour
-   */
+
   togglePublished: async (id) => {
     try {
       const response = await api.put(`/announcements/${id}/toggle-published`);
       return response.data;
     } catch (error) {
-      console.error(`Erreur lors du toggle de l'annonce ${id}:`, error);
+      console.error(`[Announcement] Toggle publish ${id} error:`, error.message);
       throw error;
     }
   },
 
-  /**
-   * Supprimer une annonce
-   * @param {number} id - ID de l'annonce
-   * @returns {Promise}
-   */
+
   deleteAnnouncement: async (id) => {
     try {
       await api.delete(`/announcements/${id}`);
       return { success: true };
     } catch (error) {
-      console.error(`Erreur lors de la suppression de l'annonce ${id}:`, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Toggle le status de publication d'une annonce
-   * @param {number} id - ID de l'annonce
-   * @returns {Promise<Object>} Annonce mise à jour
-   */
-  togglePublished: async (id) => {
-    try {
-      const response = await api.put(`/announcements/${id}/toggle-published`);
-      return response.data;
-    } catch (error) {
-      console.error(`Erreur lors du toggle publish de l'annonce ${id}:`, error);
+      console.error(`[Announcement] Delete ${id} error:`, error.message);
       throw error;
     }
   },

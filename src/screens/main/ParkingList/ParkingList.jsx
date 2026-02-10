@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, Image, TextInput, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from "react-native";
-import DatePicker from "react-native-date-picker";
+import DatePicker from "../../../components/ui/AppDatePicker/AppDatePicker";
 import Ionicons from "react-native-vector-icons/Ionicons";
 
 import useFilters from "../../../hooks/useFilters";
@@ -62,7 +62,7 @@ export default function ParkingList({ navigation }) {
       setAllAnnouncements(data); // Stocker toutes les annonces
       setAnnouncements(data);
     } catch (error) {
-      console.error('Erreur chargement annonces:', error);
+      console.error('[ParkingList] Load error:', error.message);
       if (error.response) {
         Alert.alert('Erreur', `Impossible de charger les annonces (${error.response.status})`);
       } else if (error.request) {
@@ -103,12 +103,12 @@ export default function ParkingList({ navigation }) {
         filters.minPlaces = parseInt(vehicleCount);
       }
 
-      console.log('🔍 Recherche avec filtres:', filters);
+
 
       // Appeler l'API de recherche
       const results = await announcementService.searchAnnouncements(filters);
 
-      console.log(' Résultats:', results.length, 'annonce(s)');
+
 
       setAllAnnouncements(results);
       setAnnouncements(results);
@@ -119,7 +119,7 @@ export default function ParkingList({ navigation }) {
         Alert.alert('Succès', `${results.length} annonce(s) trouvée(s)`);
       }
     } catch (error) {
-      console.error('Erreur recherche:', error);
+      console.error('[ParkingList] Search error:', error.message);
       Alert.alert('Erreur', 'Impossible d\'effectuer la recherche');
     } finally {
       setLoading(false);
@@ -232,7 +232,7 @@ export default function ParkingList({ navigation }) {
               const parkingId = parking?.id_Parking || parking?.Id_Parking;
 
               if (!announcementId || !parkingId) {
-                console.error('Erreur: ATTENTION: Données manquantes!', announcement);
+                console.warn('[ParkingList] Missing data for announcement', index);
               }
 
               // Récupérer l'image principale du parking (depuis Supabase)

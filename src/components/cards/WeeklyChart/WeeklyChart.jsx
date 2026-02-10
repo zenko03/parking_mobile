@@ -74,29 +74,40 @@ const WeeklyChart = ({ data, title, totalRevenue, evolution }) => {
     );
 };
 
-// Préparer les données pour le graphique
+// Preparer les donnees pour le graphique (toujours 7 jours)
 const prepareChartData = (data) => {
+    // Initialiser avec 7 jours a 0
+    const result = Array(7).fill(0);
+    
     if (!data || data.length === 0) {
-        return Array(7).fill(0);
+        return result;
     }
 
-    // Prendre les 7 derniers jours et inverser pour avoir du plus ancien au plus récent
+    // Prendre les 7 derniers jours et inverser pour avoir du plus ancien au plus recent
     const last7Days = data.slice(0, 7).reverse();
+    
+    // Remplir les donnees disponibles
+    last7Days.forEach((day, index) => {
+        result[index] = parseFloat(day.revenusJour) || 0;
+    });
 
-    return last7Days.map(day => day.revenusJour || 0);
+    return result;
 };
 
-// Générer le path SVG pour le graphique
+// Generer le path SVG pour le graphique
 const generatePath = (data) => {
     const maxValue = Math.max(...data, 1);
-    const stepX = CHART_WIDTH / (data.length - 1);
+    const numPoints = data.length;
+    
+    // Eviter la division par zero
+    const stepX = numPoints > 1 ? CHART_WIDTH / (numPoints - 1) : CHART_WIDTH / 2;
     const padding = 20;
 
     let linePath = '';
     let areaPath = '';
 
     data.forEach((value, index) => {
-        const x = index * stepX;
+        const x = numPoints > 1 ? index * stepX : CHART_WIDTH / 2;
         const y = CHART_HEIGHT - padding - ((value / maxValue) * (CHART_HEIGHT - padding * 2));
 
         if (index === 0) {

@@ -38,7 +38,7 @@ const MyParkings = ({ navigation }) => {
         await loadParkings(user.Id_Users);
       }
     } catch (error) {
-      console.error('Erreur chargement utilisateur:', error);
+      console.error('[User] Load error:', error.message);
       setLoading(false);
     }
   };

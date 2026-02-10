@@ -3,8 +3,31 @@
  */
 
 import 'react-native-get-random-values';
-import { AppRegistry } from 'react-native';
+import { AppRegistry, Platform } from 'react-native';
+import React from 'react';
 import App from './App';
-import { name as appName } from './app.json';
+import ErrorBoundary from './src/components/ErrorBoundary';
+import appConfig from './app.json';
 
-AppRegistry.registerComponent(appName, () => App);
+// Load icon fonts for web
+if (Platform.OS === 'web') {
+    require('./icon-fonts.web.js');
+}
+
+const RootComponent = () => (
+    <ErrorBoundary>
+        <App />
+    </ErrorBoundary>
+);
+
+const appName = appConfig.expo.name || 'UPark';
+AppRegistry.registerComponent(appName, () => RootComponent);
+
+if (Platform.OS === 'web') {
+    const rootTag = document.getElementById('root') || document.getElementById('main');
+    if (rootTag) {
+        AppRegistry.runApplication(appName, { rootTag });
+    } else {
+        console.error('[Web] Root element not found');
+    }
+}

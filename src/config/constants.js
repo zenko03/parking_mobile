@@ -21,9 +21,13 @@ export const CURRENCY = {
  * @returns {string} Montant formaté avec devise
  */
 export const formatPrice = (amount, showDecimals = true) => {
+    // Parser en nombre si c'est une string
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    const safeAmount = isNaN(numAmount) ? 0 : numAmount;
+    
     const formattedAmount = showDecimals
-        ? (amount || 0).toFixed(2)
-        : Math.round(amount || 0).toString();
+        ? safeAmount.toFixed(2)
+        : Math.round(safeAmount).toString();
 
     if (CURRENCY.position === 'before') {
         return `${CURRENCY.symbol}${formattedAmount}`;

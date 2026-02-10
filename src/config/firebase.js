@@ -1,18 +1,30 @@
-import messaging from '@react-native-firebase/messaging';
 import { Platform, PermissionsAndroid } from 'react-native';
 
+// Import conditionnel de Firebase messaging (seulement sur mobile)
+let messaging = null;
+if (Platform.OS !== 'web') {
+  messaging = require('@react-native-firebase/messaging').default;
+}
+
+// Fonctions stub pour le web
+const createWebStub = (name) => {
+  return async (...args) => {
+    return null;
+  };
+};
 
 export const requestUserPermission = async () => {
+  if (Platform.OS === 'web') {
+    return false;
+  }
+
   try {
     if (Platform.OS === 'android' && Platform.Version >= 33) {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
       );
 
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        console.log(' Permission notifications accordée');
-      } else {
-        console.log('Erreur: Permission notifications refusée');
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
         return false;
       }
     }
@@ -23,73 +35,68 @@ export const requestUserPermission = async () => {
       authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
       authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-    if (enabled) {
-      console.log(' Autorisation FCM:', authStatus);
-      return true;
-    } else {
-      console.log('Erreur: Autorisation FCM refusée');
+    if (!enabled) {
       return false;
     }
+    return true;
   } catch (error) {
-    console.error('Erreur: Erreur permission FCM:', error);
+    console.error('[FCM] Permission error:', error.message);
     return false;
   }
 };
 
-//get fcm
 export const getFCMToken = async () => {
+  if (Platform.OS === 'web') return null;
+
   try {
     const fcmToken = await messaging().getToken();
     if (fcmToken) {
-      console.log(' FCM Token obtenu:', fcmToken.substring(0, 20) + '...');
       return fcmToken;
     } else {
-      console.warn(' Aucun token FCM disponible');
       return null;
     }
   } catch (error) {
-    console.error('Erreur: Erreur récupération token FCM:', error);
+    console.error('[FCM] Token error:', error.message);
     return null;
   }
 };
 
-//refresh FCm
 export const onTokenRefresh = (callback) => {
+  if (Platform.OS === 'web') return () => { };
+
   return messaging().onTokenRefresh((token) => {
-    console.log(' Token FCM rafraîchi:', token.substring(0, 20) + '...');
     callback(token);
   });
 };
 
-
 export const onForegroundMessage = (callback) => {
+  if (Platform.OS === 'web') return () => { };
+
   return messaging().onMessage(async (remoteMessage) => {
-    console.log(' Notification foreground:', remoteMessage);
     callback(remoteMessage);
   });
 };
-
 
 export const setBackgroundMessageHandler = () => {
+  if (Platform.OS === 'web') return;
+
   messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-    console.log('📭 Notification background:', remoteMessage);
-    // Vous pouvez traiter la notification ici si besoin
   });
 };
 
-
 export const onNotificationOpenedApp = (callback) => {
+  if (Platform.OS === 'web') return;
+
   messaging().onNotificationOpenedApp((remoteMessage) => {
-    console.log(' Notification cliquée (app fermée):', remoteMessage);
     callback(remoteMessage);
   });
 };
 
-
 export const getInitialNotification = async (callback) => {
+  if (Platform.OS === 'web') return;
+
   const remoteMessage = await messaging().getInitialNotification();
   if (remoteMessage) {
-    console.log(' App ouverte via notification:', remoteMessage);
     callback(remoteMessage);
   }
 };
