@@ -1,0 +1,6 @@
+{
+  "buildCommand": "npm run export:web",
+  "installCommand": "npm install --legacy-peer-deps",
+  "outputDirectory": "dist",
+  "framework": null
+}
