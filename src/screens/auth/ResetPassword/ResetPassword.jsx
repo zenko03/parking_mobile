@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Alert, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Text, TextInput, ActivityIndicator, TouchableOpacity } from "react-native";
 import { Button } from 'react-native-paper';
 import { ScrollView } from "react-native-gesture-handler";
 import { authService } from "../../../services";
+import { useAlert } from '../../../hooks/useAlert';
 import { resetPasswordStyles as styles } from './ResetPassword.styles';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export default function ResetPassword({ navigation, route }) {
+    const { AlertComponent, showAlert } = useAlert();
     const { email, code } = route.params || {};
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -17,17 +19,17 @@ export default function ResetPassword({ navigation, route }) {
     const handleSubmit = async () => {
         // Validations
         if (!newPassword.trim()) {
-            Alert.alert('Erreur', 'Veuillez entrer un nouveau mot de passe');
+            showAlert({ title: 'Erreur', message: 'Veuillez entrer un nouveau mot de passe', type: 'error' });
             return;
         }
 
         if (newPassword.length < 6) {
-            Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères');
+            showAlert({ title: 'Erreur', message: 'Le mot de passe doit contenir au moins 6 caractères', type: 'error' });
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
+            showAlert({ title: 'Erreur', message: 'Les mots de passe ne correspondent pas', type: 'error' });
             return;
         }
 
@@ -39,26 +41,27 @@ export default function ResetPassword({ navigation, route }) {
             console.log('Réponse reset-password:', response);
 
             if (response.success) {
-                Alert.alert(
-                    'Succès',
-                    'Votre mot de passe a été réinitialisé avec succès.',
-                    [
+                showAlert({
+                    title: 'Succès',
+                    message: 'Votre mot de passe a été réinitialisé avec succès.',
+                    type: 'success',
+                    buttons: [
                         {
                             text: 'Se connecter',
                             onPress: () => navigation.navigate('Login')
                         }
                     ]
-                );
+                });
             } else {
-                Alert.alert('Erreur', response.message || 'Erreur lors de la réinitialisation');
+                showAlert({ title: 'Erreur', message: response.message || 'Erreur lors de la réinitialisation', type: 'error' });
             }
         } catch (error) {
             console.error('Erreur:', error);
 
             if (error.response?.data?.message) {
-                Alert.alert('Erreur', error.response.data.message);
+                showAlert({ title: 'Erreur', message: error.response.data.message, type: 'error' });
             } else {
-                Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
+                showAlert({ title: 'Erreur', message: 'Une erreur est survenue. Veuillez réessayer.', type: 'error' });
             }
         } finally {
             setLoading(false);
@@ -170,6 +173,7 @@ export default function ResetPassword({ navigation, route }) {
                     <Text style={styles.backToLoginText}>Retour à la connexion</Text>
                 </TouchableOpacity>
             </View>
+            {AlertComponent}
         </ScrollView>
     );
 }

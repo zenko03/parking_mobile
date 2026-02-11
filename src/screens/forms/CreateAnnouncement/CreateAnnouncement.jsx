@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   ActivityIndicator,
   Switch,
   Modal,
@@ -19,8 +18,10 @@ import parkingService from '../../../services/parkingService';
 import announcementService from '../../../services/announcementService';
 import { createAnnouncementStyles as styles } from './CreateAnnouncement.styles';
 import { colors } from '../../../theme';
+import { useAlert } from '../../../hooks/useAlert';
 
 const CreateAnnouncement = ({ route, navigation }) => {
+  const { AlertComponent, showAlert } = useAlert();
   const insets = useSafeAreaInsets();
   const { parkingId: initialParkingId } = route.params || {};
 
@@ -80,7 +81,7 @@ const CreateAnnouncement = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error('Erreur chargement données initiales:', error);
-      Alert.alert('Erreur', 'Impossible de charger les données');
+      showAlert({ title: 'Erreur', message: 'Impossible de charger les données', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -245,7 +246,7 @@ const CreateAnnouncement = ({ route, navigation }) => {
   // Ajouter une plage de dates
   const addDateRange = () => {
     if (!selectedRange.startDate) {
-      Alert.alert('Erreur', 'Veuillez sélectionner une plage de dates');
+      showAlert({ title: 'Erreur', message: 'Veuillez sélectionner une plage de dates', type: 'error' });
       return;
     }
 
@@ -279,29 +280,29 @@ const CreateAnnouncement = ({ route, navigation }) => {
   const handleSubmit = async (isPublished) => {
     // Validation
     if (!selectedParkingId) {
-      Alert.alert('Erreur', 'Veuillez sélectionner un parking');
+      showAlert({ title: 'Erreur', message: 'Veuillez sélectionner un parking', type: 'error' });
       return;
     }
 
     if (selectedVehicles.length === 0) {
-      Alert.alert('Erreur', 'Veuillez sélectionner au moins un type de véhicule');
+      showAlert({ title: 'Erreur', message: 'Veuillez sélectionner au moins un type de véhicule', type: 'error' });
       return;
     }
 
     // Vérifier que tous les véhicules ont un nombre de places valide
     const invalidVehicle = selectedVehicles.find(v => !v.numbers || v.numbers <= 0);
     if (invalidVehicle) {
-      Alert.alert('Erreur', 'Veuillez saisir un nombre de places valide pour tous les véhicules');
+      showAlert({ title: 'Erreur', message: 'Veuillez saisir un nombre de places valide pour tous les véhicules', type: 'error' });
       return;
     }
 
     if (availabilityType === 'recurring' && !weekdayEnabled && !weekendEnabled) {
-      Alert.alert('Erreur', 'Veuillez définir au moins une plage horaire');
+      showAlert({ title: 'Erreur', message: 'Veuillez définir au moins une plage horaire', type: 'error' });
       return;
     }
 
     if (availabilityType === 'calendar' && calendarDates.length === 0) {
-      Alert.alert('Erreur', 'Veuillez ajouter au moins une plage de dates');
+      showAlert({ title: 'Erreur', message: 'Veuillez ajouter au moins une plage de dates', type: 'error' });
       return;
     }
 
@@ -330,10 +331,11 @@ const CreateAnnouncement = ({ route, navigation }) => {
 
       await announcementService.createCompleteAnnouncement(announcementData);
 
-      Alert.alert(
-        'Succès',
-        'Annonce publiée avec succès !',
-        [
+      showAlert({
+        title: 'Succès',
+        message: 'Annonce publiée avec succès !',
+        type: 'success',
+        buttons: [
           {
             text: 'OK',
             onPress: () => navigation.reset({
@@ -342,10 +344,10 @@ const CreateAnnouncement = ({ route, navigation }) => {
             }),
           },
         ]
-      );
+      });
     } catch (error) {
       console.error('Erreur création annonce:', error);
-      Alert.alert('Erreur', 'Impossible de créer l\'annonce. Vérifiez vos données.');
+      showAlert({ title: 'Erreur', message: 'Impossible de créer l\'annonce. Vérifiez vos données.', type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -750,6 +752,7 @@ const CreateAnnouncement = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
+      {AlertComponent}
     </View>
   );
 };

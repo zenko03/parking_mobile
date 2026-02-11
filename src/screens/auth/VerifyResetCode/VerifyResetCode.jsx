@@ -1,12 +1,14 @@
 import React, { useState, useRef } from "react";
-import { View, Text, TextInput, Image, Alert, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Text, TextInput, Image, ActivityIndicator, TouchableOpacity } from "react-native";
 import { Button } from 'react-native-paper';
 import { ScrollView } from "react-native-gesture-handler";
 import { authService } from "../../../services";
+import { useAlert } from '../../../hooks/useAlert';
 import { verifyResetCodeStyles as styles } from './VerifyResetCode.styles';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export default function VerifyResetCode({ navigation, route }) {
+    const { AlertComponent, showAlert } = useAlert();
     const { email } = route.params || {};
     const [code, setCode] = useState(['', '', '', '', '', '']);
     const [loading, setLoading] = useState(false);
@@ -40,7 +42,7 @@ export default function VerifyResetCode({ navigation, route }) {
         const fullCode = code.join('');
 
         if (fullCode.length !== 6) {
-            Alert.alert('Erreur', 'Veuillez entrer le code à 6 chiffres');
+            showAlert({ title: 'Erreur', message: 'Veuillez entrer le code à 6 chiffres', type: 'error' });
             return;
         }
 
@@ -55,11 +57,11 @@ export default function VerifyResetCode({ navigation, route }) {
                 // Naviguer vers l'écran de changement de mot de passe
                 navigation.navigate('ResetPassword', { email, code: fullCode });
             } else {
-                Alert.alert('Erreur', response.message || 'Code invalide ou expiré');
+                showAlert({ title: 'Erreur', message: response.message || 'Code invalide ou expiré', type: 'error' });
             }
         } catch (error) {
             console.error('Erreur:', error);
-            Alert.alert('Erreur', 'Code invalide ou expiré. Veuillez réessayer.');
+            showAlert({ title: 'Erreur', message: 'Code invalide ou expiré. Veuillez réessayer.', type: 'error' });
         } finally {
             setLoading(false);
         }
@@ -70,13 +72,13 @@ export default function VerifyResetCode({ navigation, route }) {
 
         try {
             await authService.forgotPassword(email);
-            Alert.alert('Succès', 'Un nouveau code a été envoyé à votre adresse email.');
+            showAlert({ title: 'Succès', message: 'Un nouveau code a été envoyé à votre adresse email.', type: 'success' });
             // Réinitialiser le code
             setCode(['', '', '', '', '', '']);
             inputRefs.current[0]?.focus();
         } catch (error) {
             console.error('Erreur:', error);
-            Alert.alert('Erreur', 'Impossible de renvoyer le code. Veuillez réessayer.');
+            showAlert({ title: 'Erreur', message: 'Impossible de renvoyer le code. Veuillez réessayer.', type: 'error' });
         } finally {
             setResending(false);
         }
@@ -150,6 +152,7 @@ export default function VerifyResetCode({ navigation, route }) {
                     <Text style={styles.backToLoginText}>Retour à la connexion</Text>
                 </TouchableOpacity>
             </View>
+            {AlertComponent}
         </ScrollView>
     );
 }

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import QRCode from 'react-native-qrcode-svg';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/ui/Header/Header';
 import Footer from '../../../components/ui/Footer/Footer';
+import { useAlert } from '../../../hooks/useAlert';
 import { qrcodeDisplayStyles as styles } from './QRCodeDisplay.styles';
 import { colors } from '../../../theme';
 import { qrcodeService, reservationService } from '../../../services';
@@ -14,6 +15,7 @@ import { qrcodeService, reservationService } from '../../../services';
  * Permet au client de présenter son QR à l'entrée du parking
  */
 export default function QRCodeDisplay() {
+  const { AlertComponent, showAlert } = useAlert();
   const navigation = useNavigation();
   const route = useRoute();
 
@@ -76,11 +78,12 @@ export default function QRCodeDisplay() {
       } catch (err) {
         console.error('Erreur: Erreur chargement QR Code:', err);
         setError(err.message || 'Impossible de charger le QR Code');
-        Alert.alert(
-          'Erreur',
-          'Impossible de charger le QR Code. Veuillez réessayer.',
-          [{ text: 'OK' }]
-        );
+        showAlert({
+          title: 'Erreur',
+          message: 'Impossible de charger le QR Code. Veuillez réessayer.',
+          type: 'error',
+          buttons: [{ text: 'OK' }]
+        });
       } finally {
         setLoading(false);
       }
@@ -99,11 +102,12 @@ export default function QRCodeDisplay() {
       setValidatedAt(statusData.validatedAt);
 
       if (statusData.isValidated) {
-        Alert.alert(
-          'QR Code validé ',
-          `Validé le ${formatDateTime(statusData.validatedAt)}`,
-          [{ text: 'OK' }]
-        );
+        showAlert({
+          title: 'QR Code validé ',
+          message: `Validé le ${formatDateTime(statusData.validatedAt)}`,
+          type: 'success',
+          buttons: [{ text: 'OK' }]
+        });
       }
     } catch (err) {
       console.error('Erreur: Erreur vérification statut:', err);
@@ -256,6 +260,7 @@ export default function QRCodeDisplay() {
 
       {/* Footer */}
       <Footer navigation={navigation} activeRoute="QR Code" />
+      {AlertComponent}
     </View>
   );
 }

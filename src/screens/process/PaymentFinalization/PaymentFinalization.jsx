@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { paymentFinalizationStyles as styles } from './PaymentFinalization.styles';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { reservationRequestService } from '../../../services';
 import { formatPrice } from '../../../config/constants';
+import { useAlert } from '../../../hooks/useAlert';
 
 export default function PaymentFinalization({ route, navigation }) {
+  const { AlertComponent, showAlert } = useAlert();
   const insets = useSafeAreaInsets();
   const { requestId, requestData: initialRequestData } = route.params || {};
 
@@ -35,7 +37,7 @@ export default function PaymentFinalization({ route, navigation }) {
       setRequestData(data);
     } catch (error) {
       console.error(' Erreur chargement données demande:', error);
-      Alert.alert('Erreur', 'Impossible de charger les détails de la demande');
+      showAlert({ title: 'Erreur', message: 'Impossible de charger les détails de la demande', type: 'error' });
     } finally {
       setLoadingData(false);
     }
@@ -76,19 +78,19 @@ export default function PaymentFinalization({ route, navigation }) {
   const validatePayment = () => {
     if (paymentMethod === 'card') {
       if (!cardholderName.trim()) {
-        Alert.alert('Erreur', 'Veuillez entrer le nom du titulaire');
+        showAlert({ title: 'Erreur', message: 'Veuillez entrer le nom du titulaire', type: 'error' });
         return false;
       }
       if (cardNumber.replace(/\s/g, '').length !== 16) {
-        Alert.alert('Erreur', 'Numéro de carte invalide (16 chiffres requis)');
+        showAlert({ title: 'Erreur', message: 'Numéro de carte invalide (16 chiffres requis)', type: 'error' });
         return false;
       }
       if (!expiryDate.match(/^\d{2}\/\d{2}$/)) {
-        Alert.alert('Erreur', 'Date d\'expiration invalide (format MM/YY)');
+        showAlert({ title: 'Erreur', message: 'Date d\'expiration invalide (format MM/YY)', type: 'error' });
         return false;
       }
       if (cvv.length !== 3) {
-        Alert.alert('Erreur', 'CVV invalide (3 chiffres requis)');
+        showAlert({ title: 'Erreur', message: 'CVV invalide (3 chiffres requis)', type: 'error' });
         return false;
       }
     }
@@ -100,7 +102,7 @@ export default function PaymentFinalization({ route, navigation }) {
 
     // Vérifier si pas expiré
     if (expiresAt && new Date() > expiresAt) {
-      Alert.alert('Délai expiré', 'Le délai de paiement de 24h est dépassé.');
+      showAlert({ title: 'Délai expiré', message: 'Le délai de paiement de 24h est dépassé.', type: 'warning' });
       navigation.goBack();
       return;
     }
@@ -129,7 +131,7 @@ export default function PaymentFinalization({ route, navigation }) {
       });
     } catch (error) {
       console.error('Erreur: Erreur paiement:', error);
-      Alert.alert('Erreur', error.message || 'Impossible de finaliser le paiement');
+      showAlert({ title: 'Erreur', message: error.message || 'Impossible de finaliser le paiement', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -325,6 +327,7 @@ export default function PaymentFinalization({ route, navigation }) {
           </View>
         </ScrollView>
       )}
+      {AlertComponent}
     </View>
   );
 }

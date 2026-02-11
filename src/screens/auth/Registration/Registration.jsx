@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Image, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, Image, ActivityIndicator, TouchableOpacity } from "react-native";
 import { Button } from 'react-native-paper';
 import { ScrollView } from "react-native-gesture-handler";
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import PhoneNumberInput from "../../../components/forms/PhoneNumberInput/PhoneNumberInput";
 import { authService } from "../../../services";
 import SocialLoginButtons from "../../../components/forms/SocialLoginButtons";
@@ -140,6 +141,14 @@ export default function Registration({ navigation }) {
           }}
           keyboardShouldPersistTaps="handled"
         >
+            {/* Bouton retour */}
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={28} color="#000" />
+            </TouchableOpacity>
+            
             <View style={styles.logoContainer}>
                 <Image source={require("../../../assets/logo.png")} style={styles.logo} />
             </View>
@@ -213,6 +222,17 @@ export default function Registration({ navigation }) {
                 >
                   {loading ? <ActivityIndicator size="large" color="#fff" /> : 'Créer le compte'}
                 </Button>
+
+                {/* Lien vers connexion */}
+                <View style={styles.linkContainer}>
+                  <Text style={styles.linkText}>Vous avez déjà un compte?</Text>
+                  <Text
+                    style={styles.loginLink}
+                    onPress={() => navigation.navigate("Login")}
+                  >
+                    Se connecter
+                  </Text>
+                </View>
 
                 {/* Boutons de connexion sociale */}
                 <SocialLoginButtons 

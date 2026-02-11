@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Image, Alert, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Text, TextInput, Image, ActivityIndicator, TouchableOpacity } from "react-native";
 import { Button } from 'react-native-paper';
 import { ScrollView } from "react-native-gesture-handler";
 import { authService } from "../../../services";
+import { useAlert } from '../../../hooks/useAlert';
 import { forgotPasswordStyles as styles } from './ForgotPassword.styles';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export default function ForgotPassword({ navigation }) {
+    const { AlertComponent, showAlert } = useAlert();
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -14,11 +16,11 @@ export default function ForgotPassword({ navigation }) {
         // Validation de l'email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!email.trim()) {
-            Alert.alert('Erreur', 'Veuillez entrer votre adresse email');
+            showAlert({ title: 'Erreur', message: 'Veuillez entrer votre adresse email', type: 'error' });
             return;
         }
         if (!emailRegex.test(email.trim())) {
-            Alert.alert('Erreur', 'Veuillez entrer une adresse email valide');
+            showAlert({ title: 'Erreur', message: 'Veuillez entrer une adresse email valide', type: 'error' });
             return;
         }
 
@@ -30,23 +32,24 @@ export default function ForgotPassword({ navigation }) {
             console.log('Réponse forgot-password:', response);
 
             // Naviguer vers l'écran de vérification du code
-            Alert.alert(
-                'Email envoyé',
-                'Si cette adresse est associée à un compte, vous recevrez un code de vérification.',
-                [
+            showAlert({
+                title: 'Email envoyé',
+                message: 'Si cette adresse est associée à un compte, vous recevrez un code de vérification.',
+                type: 'success',
+                buttons: [
                     {
                         text: 'OK',
                         onPress: () => navigation.navigate('VerifyResetCode', { email: email.trim() })
                     }
                 ]
-            );
+            });
         } catch (error) {
             console.error('Erreur:', error);
 
             if (error.response?.status === 500) {
-                Alert.alert('Erreur', 'Une erreur est survenue lors de l\'envoi de l\'email. Veuillez réessayer.');
+                showAlert({ title: 'Erreur', message: 'Une erreur est survenue lors de l\'envoi de l\'email. Veuillez réessayer.', type: 'error' });
             } else {
-                Alert.alert('Erreur', 'Une erreur est survenue. Veuillez réessayer.');
+                showAlert({ title: 'Erreur', message: 'Une erreur est survenue. Veuillez réessayer.', type: 'error' });
             }
         } finally {
             setLoading(false);
@@ -105,6 +108,7 @@ export default function ForgotPassword({ navigation }) {
                     <Text style={styles.backToLoginText}>Retour à la connexion</Text>
                 </TouchableOpacity>
             </View>
+            {AlertComponent}
         </ScrollView>
     );
 }

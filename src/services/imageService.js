@@ -1,5 +1,5 @@
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
-import { PermissionsAndroid, Platform, Alert } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 import api from '../config/api';
 import { supabase } from '../config/supabase';
 
@@ -116,10 +116,7 @@ const imageService = {
 
     const hasPermission = await imageService.requestCameraPermission();
     if (!hasPermission) {
-      Alert.alert(
-        'Permission refusée',
-        "L'accès à la caméra est nécessaire pour prendre des photos"
-      );
+      // Permission refusee - l'erreur sera geree par le composant appelant
       throw new Error('Permission caméra refusée');
     }
 
@@ -241,6 +238,9 @@ const imageService = {
   },
 
 
+  // TODO MIGRATION: Cette fonction utilise encore Alert.alert sur mobile.
+  // Pour une migration complete, creer un composant ImagePickerDialog qui utilise AlertDialog
+  // et deplacer cette logique dans les composants appelants (ReportIssue, AddEditParking)
   showImagePickerOptions: () => {
     if (Platform.OS === 'web') {
       return new Promise((resolve) => {
@@ -254,6 +254,9 @@ const imageService = {
       });
     }
 
+    // NOTE: Import Alert temporairement pour cette fonction uniquement
+    // Cette partie necessite une refonte plus importante pour utiliser AlertDialog
+    const { Alert } = require('react-native');
     return new Promise((resolve) => {
       Alert.alert(
         'Ajouter une photo',

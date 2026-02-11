@@ -46,9 +46,26 @@ export const registrationStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  linkText: {
+    fontFamily: 'Figtree-Regular',
+    fontSize: typography.fontSize.base,
+  },
+  loginLink: {
+    marginLeft: spacing.xs3,
+    fontWeight: typography.fontWeight.bold,
+    fontFamily: 'Figtree-Regular',
+    fontSize: typography.fontSize.base,
+  },
   register: {
     marginLeft: spacing.xs3,
     fontWeight: typography.fontWeight.bold,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 10,
+    padding: spacing.xs,
   },
   logoContainer: {
     flex: 1,

@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Modal,
   Image,
   KeyboardAvoidingView,
@@ -21,9 +20,11 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import disputeService, { DISPUTE_MOTIFS } from '../../../services/disputeService';
 import { reservationService, imageService } from '../../../services';
+import { useAlert } from '../../../hooks/useAlert';
 import { reportIssueStyles as styles } from './ReportIssue.styles';
 
 export default function ReportIssue({ route, navigation }) {
+  const { AlertComponent, showAlert } = useAlert();
   const { reservationId, reservationData } = route.params || {};
 
   // États du formulaire
@@ -56,7 +57,7 @@ export default function ReportIssue({ route, navigation }) {
       }
     } catch (error) {
       console.error('Erreur: Erreur chargement réservation:', error);
-      Alert.alert('Erreur', 'Impossible de charger les détails de la réservation');
+      showAlert({ title: 'Erreur', message: 'Impossible de charger les détails de la réservation', type: 'error' });
     } finally {
       setLoadingReservation(false);
     }
@@ -77,7 +78,7 @@ export default function ReportIssue({ route, navigation }) {
   // Sélectionner une photo (galerie ou caméra)
   const handleAddPhoto = async () => {
     if (photos.length >= 5) {
-      Alert.alert('Limite atteinte', 'Vous pouvez ajouter maximum 5 photos');
+      showAlert({ title: 'Limite atteinte', message: 'Vous pouvez ajouter maximum 5 photos', type: 'warning' });
       return;
     }
 
@@ -92,7 +93,7 @@ export default function ReportIssue({ route, navigation }) {
       }
     } catch (error) {
       console.error('Erreur sélection photo:', error);
-      Alert.alert('Erreur', 'Impossible de sélectionner la photo');
+      showAlert({ title: 'Erreur', message: 'Impossible de sélectionner la photo', type: 'error' });
     }
   };
 
@@ -111,21 +112,22 @@ export default function ReportIssue({ route, navigation }) {
   // Soumettre le litige
   const handleSubmit = async () => {
     if (!isFormValid()) {
-      Alert.alert('Formulaire incomplet', 'Veuillez sélectionner un motif et décrire le problème (minimum 10 caractères)');
+      showAlert({ title: 'Formulaire incomplet', message: 'Veuillez sélectionner un motif et décrire le problème (minimum 10 caractères)', type: 'warning' });
       return;
     }
 
-    Alert.alert(
-      'Confirmer le signalement',
-      'Êtes-vous sûr de vouloir soumettre ce litige ? Notre équipe examinera votre demande dans les plus brefs délais.',
-      [
+    showAlert({
+      title: 'Confirmer le signalement',
+      message: 'Êtes-vous sûr de vouloir soumettre ce litige ? Notre équipe examinera votre demande dans les plus brefs délais.',
+      type: 'warning',
+      buttons: [
         { text: 'Annuler', style: 'cancel' },
         {
           text: 'Soumettre',
           onPress: submitDispute,
         },
       ]
-    );
+    });
   };
 
   const submitDispute = async () => {
@@ -138,7 +140,7 @@ export default function ReportIssue({ route, navigation }) {
       const userId = user?.Id_Users;
 
       if (!userId) {
-        Alert.alert('Erreur', 'Impossible de récupérer vos informations utilisateur');
+        showAlert({ title: 'Erreur', message: 'Impossible de récupérer vos informations utilisateur', type: 'error' });
         return;
       }
 
@@ -184,20 +186,21 @@ export default function ReportIssue({ route, navigation }) {
           }
         }
 
-        Alert.alert(
-          'Litige signalé',
-          'Votre signalement a été enregistré. Notre équipe vous contactera rapidement.',
-          [
+        showAlert({
+          title: 'Litige signalé',
+          message: 'Votre signalement a été enregistré. Notre équipe vous contactera rapidement.',
+          type: 'success',
+          buttons: [
             {
               text: 'OK',
               onPress: () => navigation.goBack(),
             },
           ]
-        );
+        });
       }
     } catch (error) {
       console.error('Erreur: Erreur soumission litige:', error);
-      Alert.alert('Erreur', 'Impossible de soumettre le litige. Veuillez réessayer.');
+      showAlert({ title: 'Erreur', message: 'Impossible de soumettre le litige. Veuillez réessayer.', type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -380,6 +383,7 @@ export default function ReportIssue({ route, navigation }) {
           )}
         </TouchableOpacity>
       </View>
+      {AlertComponent}
     </KeyboardAvoidingView>
   );
 }

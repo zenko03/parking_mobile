@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, Image, TextInput, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from "react-native";
+import { View, Text, ScrollView, Image, TextInput, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
 import DatePicker from "../../../components/ui/AppDatePicker/AppDatePicker";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import { useAlert } from '../../../hooks/useAlert';
 
 import useFilters from "../../../hooks/useFilters";
 import FilterButton from "../../../components/forms/FilterButton/FilterButton";
@@ -14,6 +15,7 @@ import { announcementService, vehicleService } from "../../../services";
 import { formatHourlyRate } from "../../../config/constants";
 
 export default function ParkingList({ navigation }) {
+  const { AlertComponent, showAlert } = useAlert();
   const {
     activeFilter, setActiveFilter,
     startDate, setStartDate,
@@ -64,11 +66,11 @@ export default function ParkingList({ navigation }) {
     } catch (error) {
       console.error('[ParkingList] Load error:', error.message);
       if (error.response) {
-        Alert.alert('Erreur', `Impossible de charger les annonces (${error.response.status})`);
+        showAlert({ title: 'Erreur', message: `Impossible de charger les annonces (${error.response.status})`, type: 'error' });
       } else if (error.request) {
-        Alert.alert('Erreur', 'Serveur inaccessible. Vérifiez que le backend est démarré.');
+        showAlert({ title: 'Erreur', message: 'Serveur inaccessible. Vérifiez que le backend est démarré.', type: 'error' });
       } else {
-        Alert.alert('Erreur', 'Une erreur est survenue');
+        showAlert({ title: 'Erreur', message: 'Une erreur est survenue', type: 'error' });
       }
     } finally {
       setLoading(false);
@@ -114,13 +116,13 @@ export default function ParkingList({ navigation }) {
       setAnnouncements(results);
 
       if (results.length === 0) {
-        Alert.alert('Aucun résultat', 'Aucune annonce ne correspond à vos critères.');
+        showAlert({ title: 'Aucun résultat', message: 'Aucune annonce ne correspond à vos critères.', type: 'warning' });
       } else {
-        Alert.alert('Succès', `${results.length} annonce(s) trouvée(s)`);
+        showAlert({ title: 'Succès', message: `${results.length} annonce(s) trouvée(s)`, type: 'success' });
       }
     } catch (error) {
       console.error('[ParkingList] Search error:', error.message);
-      Alert.alert('Erreur', 'Impossible d\'effectuer la recherche');
+      showAlert({ title: 'Erreur', message: 'Impossible d\'effectuer la recherche', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -323,6 +325,8 @@ export default function ParkingList({ navigation }) {
 
       {/* FOOTER */}
       <Footer navigation={navigation} activeRoute="Liste des parkings" />
+      
+      {AlertComponent}
     </View>
   );
 }

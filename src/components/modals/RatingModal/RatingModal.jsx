@@ -7,10 +7,10 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Image,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useAlert } from '../../../hooks/useAlert';
 import { ratingModalStyles as styles } from './RatingModal.styles';
 import { colors } from '../../../theme';
 
@@ -22,6 +22,7 @@ import { colors } from '../../../theme';
  * @param {object} reservation - Données de la réservation (nom parking, date, etc.)
  */
 export default function RatingModal({ visible, onClose, onSubmit, reservation }) {
+  const { AlertComponent, showAlert } = useAlert();
   const [rating, setRating] = useState(0);
   const [criteria, setCriteria] = useState({
     cleanliness: false,
@@ -69,7 +70,7 @@ export default function RatingModal({ visible, onClose, onSubmit, reservation })
   // Soumission de l'avis
   const handleSubmit = async () => {
     if (rating === 0) {
-      Alert.alert('Note requise', 'Veuillez sélectionner une note de 1 à 5 étoiles.');
+      showAlert({ title: 'Note requise', message: 'Veuillez sélectionner une note de 1 à 5 étoiles.', type: 'warning' });
       return;
     }
 
@@ -89,14 +90,15 @@ export default function RatingModal({ visible, onClose, onSubmit, reservation })
 
       await onSubmit(ratingData);
       
-      Alert.alert(
-        'Merci !',
-        'Votre avis a été enregistré avec succès.',
-        [{ text: 'OK', onPress: handleClose }]
-      );
+      showAlert({
+        title: 'Merci !',
+        message: 'Votre avis a été enregistré avec succès.',
+        type: 'success',
+        buttons: [{ text: 'OK', onPress: handleClose }]
+      });
     } catch (error) {
       console.error('Erreur soumission avis:', error);
-      Alert.alert('Erreur', 'Impossible d\'envoyer votre avis. Veuillez réessayer.');
+      showAlert({ title: 'Erreur', message: 'Impossible d\'envoyer votre avis. Veuillez réessayer.', type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -271,6 +273,8 @@ export default function RatingModal({ visible, onClose, onSubmit, reservation })
           </View>
         </View>
       </View>
+      
+      {AlertComponent}
     </Modal>
   );
 }

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, Vibration } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Vibration } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import Header from '../../../components/ui/Header/Header';
 import Footer from '../../../components/ui/Footer/Footer';
+import { useAlert } from '../../../hooks/useAlert';
 import { qrcodeScannerStyles as styles } from './QRCodeScanner.styles';
 import { colors } from '../../../theme';
 import { qrcodeService } from '../../../services';
@@ -13,6 +14,7 @@ import { qrcodeService } from '../../../services';
  * Permet de valider l'entrée des clients
  */
 export default function QRCodeScanner() {
+  const { AlertComponent, showAlert } = useAlert();
   const navigation = useNavigation();
 
   // États
@@ -43,18 +45,19 @@ export default function QRCodeScanner() {
         setHasPermission(permission === 'authorized');
 
         if (permission === 'denied') {
-          Alert.alert(
-            'Permission refusée',
-            'L\'accès à la caméra est nécessaire pour scanner les QR codes.',
-            [
+          showAlert({
+            title: 'Permission refusée',
+            message: 'L\'accès à la caméra est nécessaire pour scanner les QR codes.',
+            type: 'error',
+            buttons: [
               { text: 'Annuler', onPress: () => navigation.goBack() },
               { text: 'Réessayer', onPress: requestCameraPermission },
             ]
-          );
+          });
         }
       } catch (error) {
         console.error('Erreur: Erreur permission caméra:', error);
-        Alert.alert('Erreur', 'Impossible d\'accéder à la caméra');
+        showAlert({ title: 'Erreur', message: 'Impossible d\'accéder à la caméra', type: 'error' });
       }
     };
 
@@ -89,10 +92,11 @@ export default function QRCodeScanner() {
       // Succès - Vibration de confirmation
       Vibration.vibrate([0, 200, 100, 200]);
 
-      Alert.alert(
-        ' QR Code validé',
-        `Réservation validée avec succès!\n\nParking: ${result.reservation?.parking?.name || 'N/A'}\nClient: ${result.reservation?.user?.firstName || 'N/A'} ${result.reservation?.user?.lastName || ''}`,
-        [
+      showAlert({
+        title: ' QR Code validé',
+        message: `Réservation validée avec succès!\n\nParking: ${result.reservation?.parking?.name || 'N/A'}\nClient: ${result.reservation?.user?.firstName || 'N/A'} ${result.reservation?.user?.lastName || ''}`,
+        type: 'success',
+        buttons: [
           {
             text: 'OK',
             onPress: () => {
@@ -105,17 +109,18 @@ export default function QRCodeScanner() {
             onPress: () => navigation.goBack(),
           },
         ]
-      );
+      });
     } catch (error) {
       console.error('Erreur: Erreur validation QR:', error);
 
       // Vibration d'erreur
       Vibration.vibrate([0, 500]);
 
-      Alert.alert(
-        'Erreur: Erreur de validation',
-        error.message || 'Impossible de valider ce QR Code',
-        [
+      showAlert({
+        title: 'Erreur: Erreur de validation',
+        message: error.message || 'Impossible de valider ce QR Code',
+        type: 'error',
+        buttons: [
           {
             text: 'Réessayer',
             onPress: () => {
@@ -128,7 +133,7 @@ export default function QRCodeScanner() {
             onPress: () => navigation.goBack(),
           },
         ]
-      );
+      });
     }
   }, [validating]);
 
@@ -279,6 +284,7 @@ export default function QRCodeScanner() {
           <Text style={styles.footerNavText}>Profile</Text>
         </TouchableOpacity>
       </View>
+      {AlertComponent}
     </View>
   );
 }
