@@ -33,8 +33,18 @@ api.interceptors.request.use(
       const publicEndpoints = [
         '/auth/authenticate',
         '/auth/register',
+        '/auth/oauth/google',         // OAuth Google
+        '/auth/oauth/facebook',       // OAuth Facebook
+        '/auth/forgot-password',      // Reset password
+        '/auth/verify-reset-code',    // Verify reset code
+        '/auth/reset-password',       // Reset password
         '/v1/auth/authenticate',      // Avec préfixe v1
         '/v1/auth/register',          // Avec préfixe v1
+        '/v1/auth/oauth/google',      // OAuth Google avec v1
+        '/v1/auth/oauth/facebook',    // OAuth Facebook avec v1
+        '/v1/auth/forgot-password',   // Reset password avec v1
+        '/v1/auth/verify-reset-code', // Verify reset code avec v1
+        '/v1/auth/reset-password',    // Reset password avec v1
         '/vehicles',                    // Liste des types de véhicules
         '/v1/vehicles',                 // Avec préfixe v1
         '/reservations/calculate-price',  // Calcul du prix
