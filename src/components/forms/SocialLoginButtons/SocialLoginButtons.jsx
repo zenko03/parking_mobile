@@ -39,27 +39,39 @@ const SocialLoginButtons = ({ navigation, onSuccess, onError }) => {
     if (Platform.OS === 'web') {
       const checkGoogleSDK = () => {
         if (window.google && window.google.accounts) {
-          window.google.accounts.id.initialize({
-            client_id: "3320401216-bud1buvdpj398gpnkir9uoa18atejfdd.apps.googleusercontent.com",
-            callback: handleCredentialResponse,
-            cancel_on_tap_outside: false,
-          });
-
-          // Rendre le bouton physique
-          const btnDiv = document.getElementById("google-signin-button");
-          if (btnDiv) {
-            window.google.accounts.id.renderButton(btnDiv, {
-              theme: "filled_blue",
-              size: "large",
-              width: btnDiv.offsetWidth || 300,
-              text: "continue_with",
-              shape: "pill"
+          try {
+            window.google.accounts.id.initialize({
+              client_id: "3320401216-bud1buvdpj398gpnkir9uoa18atejfdd.apps.googleusercontent.com",
+              callback: handleCredentialResponse,
+              cancel_on_tap_outside: false,
             });
-          }
 
-          console.log('✅ Google SDK Initialized and Button Rendered');
+            // Rendre le bouton physique
+            const btnDiv = document.getElementById("google-signin-button");
+            if (btnDiv) {
+              window.google.accounts.id.renderButton(btnDiv, {
+                theme: "filled_blue",
+                size: "large",
+                width: btnDiv.offsetWidth || 300,
+                text: "continue_with",
+                shape: "pill",
+                locale: "fr"
+              });
+            }
+
+            console.log('✅ Google SDK initialized and button rendered');
+          } catch (error) {
+            console.error('❌ Error initializing Google SDK:', error);
+          }
         } else {
-          setTimeout(checkGoogleSDK, 500); // Réessayer si le script n'est pas encore chargé
+          // Retry si le SDK n'est pas encore charge (max 10 secondes)
+          const retryCount = (checkGoogleSDK.retries || 0) + 1;
+          if (retryCount < 20) {
+            checkGoogleSDK.retries = retryCount;
+            setTimeout(checkGoogleSDK, 500);
+          } else {
+            console.error('❌ Google SDK not loaded after 10 seconds');
+          }
         }
       };
       checkGoogleSDK();

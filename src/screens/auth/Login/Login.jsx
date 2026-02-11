@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Image, Alert, ActivityIndicator, Platform } from "react-native";
+import { View, Text, TextInput, Image, ActivityIndicator, Platform } from "react-native";
 import { Button } from 'react-native-paper';
 import { ScrollView } from "react-native-gesture-handler";
 import { authService } from "../../../services";
@@ -7,16 +7,22 @@ import SocialLoginButtons from "../../../components/forms/SocialLoginButtons";
 import { loginStyles as styles } from './Login.styles';
 import { getFCMToken } from "../../../config/firebase";
 import { registerDeviceToken } from "../../../services/notificationService";
+import { useAlert } from "../../../hooks/useAlert";
 
 export default function Login({ navigation }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { AlertComponent, showAlert } = useAlert();
 
   const handleSubmit = async () => {
     // Validation des champs
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+      showAlert({ 
+        title: 'Erreur', 
+        message: 'Veuillez remplir tous les champs',
+        type: 'error'
+      });
       return;
     }
 
@@ -48,19 +54,32 @@ export default function Login({ navigation }) {
       if (error.response) {
         // Le serveur a répondu avec une erreur
         if (error.response.status === 401 || error.response.status === 403) {
-          Alert.alert('Erreur', 'Nom d\'utilisateur ou mot de passe incorrect');
+          showAlert({ 
+            title: 'Erreur', 
+            message: 'Nom d\'utilisateur ou mot de passe incorrect',
+            type: 'error'
+          });
         } else {
-          Alert.alert('Erreur', `Erreur serveur: ${error.response.status}`);
+          showAlert({ 
+            title: 'Erreur', 
+            message: `Erreur serveur: ${error.response.status}`,
+            type: 'error'
+          });
         }
       } else if (error.request) {
         // Pas de réponse du serveur
-        Alert.alert(
-          'Erreur de connexion',
-          'Impossible de contacter le serveur.\nVérifiez que le backend est démarré.'
-        );
+        showAlert({ 
+          title: 'Erreur de connexion',
+          message: 'Impossible de contacter le serveur.\nVérifiez que le backend est démarré.',
+          type: 'error'
+        });
       } else {
         // Autre erreur
-        Alert.alert('Erreur', 'Une erreur inattendue s\'est produite');
+        showAlert({ 
+          title: 'Erreur', 
+          message: 'Une erreur inattendue s\'est produite',
+          type: 'error'
+        });
       }
     } finally {
       setLoading(false);
@@ -102,7 +121,7 @@ export default function Login({ navigation }) {
           onPress={handleSubmit}
           disabled={loading}
         >
-          {loading ? <ActivityIndicator color="#fff" /> : 'Valider'}
+          {loading ? <ActivityIndicator size="large" color="#fff" /> : 'Valider'}
         </Button>
         <View style={styles.linkContainer}>
           <Text
@@ -127,12 +146,11 @@ export default function Login({ navigation }) {
             navigation.replace('Liste des parkings');
           }}
           onError={(error) => {
-            Alert.alert('Erreur', error);
+            showAlert({ title: 'Erreur', message: error, type: 'error' });
           }}
         />
       </View>
+      {AlertComponent}
     </ScrollView>
-
-
   );
 }

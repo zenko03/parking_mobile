@@ -5,19 +5,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Remove default input outline and borders */
+/* Remove default input outline only (keep borders from React Native) */
 input,
 textarea,
 select {
   outline: none !important;
-  border: none !important;
 }
 
 input:focus,
 textarea:focus,
 select:focus {
   outline: none !important;
-  border: none !important;
 }
 
 /* Remove blue highlight on tap for mobile web */

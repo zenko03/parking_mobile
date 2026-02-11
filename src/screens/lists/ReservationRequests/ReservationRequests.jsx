@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { reservationRequestService } from '../../../services';
@@ -7,8 +7,10 @@ import Header from '../../../components/ui/Header/Header';
 import Footer from '../../../components/ui/Footer/Footer';
 import { reservationRequestsStyles as styles } from './ReservationRequests.styles';
 import { formatPrice } from '../../../config/constants';
+import { useAlert } from '../../../hooks/useAlert';
 
 export default function ReservationRequests({ navigation }) {
+  const { AlertComponent, showAlert } = useAlert();
   const [requests, setRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,11 @@ export default function ReservationRequests({ navigation }) {
       setRequests(sorted);
     } catch (error) {
       console.error('Erreur: Erreur chargement demandes:', error);
-      Alert.alert('Erreur', 'Impossible de charger les demandes');
+      showAlert({
+        title: 'Erreur',
+        message: 'Impossible de charger les demandes',
+        type: 'error'
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -79,10 +85,11 @@ export default function ReservationRequests({ navigation }) {
   };
 
   const handleAccept = async (requestId) => {
-    Alert.alert(
-      'Accepter la demande',
-      'Le client aura 24h pour effectuer le paiement',
-      [
+    showAlert({
+      title: 'Accepter la demande',
+      message: 'Le client aura 24h pour effectuer le paiement',
+      type: 'default',
+      buttons: [
         { text: 'Annuler', style: 'cancel' },
         {
           text: 'Accepter',
@@ -90,25 +97,34 @@ export default function ReservationRequests({ navigation }) {
             try {
               setProcessingId(requestId);
               await reservationRequestService.acceptRequest(requestId);
-              Alert.alert('Succès', 'Demande acceptée ! Le client a été notifié.');
+              showAlert({
+                title: 'Succès',
+                message: 'Demande acceptée ! Le client a été notifié.',
+                type: 'success'
+              });
               loadRequests();
             } catch (error) {
               console.error('Erreur: Erreur acceptation:', error);
-              Alert.alert('Erreur', error.message || 'Impossible d\'accepter la demande');
+              showAlert({
+                title: 'Erreur',
+                message: error.message || 'Impossible d\'accepter la demande',
+                type: 'error'
+              });
             } finally {
               setProcessingId(null);
             }
           }
         }
       ]
-    );
+    });
   };
 
   const handleReject = async (requestId) => {
-    Alert.alert(
-      'Refuser la demande',
-      'Êtes-vous sûr de vouloir refuser cette demande ?',
-      [
+    showAlert({
+      title: 'Refuser la demande',
+      message: 'Êtes-vous sûr de vouloir refuser cette demande ?',
+      type: 'default',
+      buttons: [
         { text: 'Annuler', style: 'cancel' },
         {
           text: 'Refuser',
@@ -117,26 +133,35 @@ export default function ReservationRequests({ navigation }) {
             try {
               setProcessingId(requestId);
               await reservationRequestService.rejectRequest(requestId);
-              Alert.alert('Demande refusée', 'Le client a été notifié.');
+              showAlert({
+                title: 'Demande refusée',
+                message: 'Le client a été notifié.',
+                type: 'warning'
+              });
               loadRequests();
             } catch (error) {
               console.error('Erreur: Erreur refus:', error);
-              Alert.alert('Erreur', error.message || 'Impossible de refuser la demande');
+              showAlert({
+                title: 'Erreur',
+                message: error.message || 'Impossible de refuser la demande',
+                type: 'error'
+              });
             } finally {
               setProcessingId(null);
             }
           }
         }
       ]
-    );
+    });
   };
 
   // Annuler une demande (client)
   const handleCancelRequest = async (requestId) => {
-    Alert.alert(
-      'Annuler la demande',
-      'Êtes-vous sûr de vouloir annuler cette demande ?',
-      [
+    showAlert({
+      title: 'Annuler la demande',
+      message: 'Êtes-vous sûr de vouloir annuler cette demande ?',
+      type: 'default',
+      buttons: [
         { text: 'Non', style: 'cancel' },
         {
           text: 'Oui, annuler',
@@ -145,18 +170,26 @@ export default function ReservationRequests({ navigation }) {
             try {
               setProcessingId(requestId);
               await reservationRequestService.cancelRequest(requestId);
-              Alert.alert('Succès', 'Demande annulée');
+              showAlert({
+                title: 'Succès',
+                message: 'Demande annulée',
+                type: 'success'
+              });
               loadRequests();
             } catch (error) {
               console.error('Erreur: Erreur annulation:', error);
-              Alert.alert('Erreur', error.message || 'Impossible d\'annuler la demande');
+              showAlert({
+                title: 'Erreur',
+                message: error.message || 'Impossible d\'annuler la demande',
+                type: 'error'
+              });
             } finally {
               setProcessingId(null);
             }
           }
         }
       ]
-    );
+    });
   };
 
   // Payer une demande acceptée (client)
@@ -392,6 +425,9 @@ export default function ReservationRequests({ navigation }) {
           }
         />
       )}
+
+      {/* ALERT DIALOG */}
+      {AlertComponent}
 
       <Footer navigation={navigation} activeRoute="Mes Demandes" />
     </View>

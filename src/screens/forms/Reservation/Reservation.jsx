@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Modal } from "react-native";
 import DatePicker from "../../../components/ui/AppDatePicker/AppDatePicker";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { reservationService, vehicleService, parkingService, authService, reservationRequestService } from "../../../services";
 import Header from "../../../components/ui/Header/Header";
+import { useAlert } from "../../../hooks/useAlert";
 
 export default function ReservationScreen({ route, navigation }) {
   const { parkingId, title, price, announcementId, mode = 'reservation' } = route.params;
   // mode: 'reservation' (paiement immédiat) ou 'request' (demande sans paiement)
 
+  const { AlertComponent, showAlert } = useAlert();
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [availabilities, setAvailabilities] = useState({});
@@ -143,7 +145,11 @@ export default function ReservationScreen({ route, navigation }) {
       const token = await AsyncStorage.getItem('jwt_token');
 
       if (!token) {
-        Alert.alert('Erreur', 'Vous devez être connecté pour calculer le prix');
+        showAlert({
+          title: 'Erreur',
+          message: 'Vous devez être connecté pour calculer le prix',
+          type: 'error'
+        });
         navigation.navigate('Login');
         return;
       }
@@ -179,25 +185,41 @@ export default function ReservationScreen({ route, navigation }) {
   const handleConfirmReservation = async () => {
     // Validation
     if (selectedTypes.length === 0) {
-      Alert.alert('Erreur', 'Veuillez sélectionner au moins un type de véhicule');
+      showAlert({
+        title: 'Erreur',
+        message: 'Veuillez sélectionner au moins un type de véhicule',
+        type: 'error'
+      });
       return;
     }
 
     if (startDate >= endDate) {
-      Alert.alert('Erreur', 'La date de fin doit être après la date de début');
+      showAlert({
+        title: 'Erreur',
+        message: 'La date de fin doit être après la date de début',
+        type: 'error'
+      });
       return;
     }
 
     // Vérifier les horaires de disponibilité
     const hoursValidation = validateReservationHours();
     if (!hoursValidation.valid) {
-      Alert.alert('Horaires non valides', hoursValidation.message);
+      showAlert({
+        title: 'Horaires non valides',
+        message: hoursValidation.message,
+        type: 'error'
+      });
       return;
     }
 
     // En mode 'request', pas besoin de paiement
     if (mode === 'reservation' && (!cardNumber || !expiryDate || !cvv)) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs de paiement');
+      showAlert({
+        title: 'Erreur',
+        message: 'Veuillez remplir tous les champs de paiement',
+        type: 'error'
+      });
       return;
     }
 
@@ -210,7 +232,11 @@ export default function ReservationScreen({ route, navigation }) {
       // Re-vérifier les horaires après rechargement
       const hoursCheck = validateReservationHours();
       if (!hoursCheck.valid) {
-        Alert.alert('Horaires non valides', hoursCheck.message);
+        showAlert({
+          title: 'Horaires non valides',
+          message: hoursCheck.message,
+          type: 'error'
+        });
         setLoading(false);
         return;
       }
@@ -219,11 +245,14 @@ export default function ReservationScreen({ route, navigation }) {
       for (const vehicleId of selectedTypes) {
         const availability = availabilities[vehicleId];
         if (!availability || !availability.isAvailable || availability.availableCapacity < 1) {
-          Alert.alert(
-            'Plus disponible',
-            `Le véhicule n'est plus disponible pour cette période. Veuillez en sélectionner un autre.`,
-            [{ text: 'OK', onPress: () => setLoading(false) }]
-          );
+          showAlert({
+            title: 'Plus disponible',
+            message: `Le véhicule n'est plus disponible pour cette période. Veuillez en sélectionner un autre.`,
+            type: 'error',
+            buttons: [
+              { text: 'OK', onPress: () => setLoading(false) }
+            ]
+          });
           return;
         }
       }
@@ -233,7 +262,11 @@ export default function ReservationScreen({ route, navigation }) {
       const user = userJson ? JSON.parse(userJson) : null;
 
       if (!user || !user.Id_Users) {
-        Alert.alert('Erreur', 'Utilisateur non connecté');
+        showAlert({
+          title: 'Erreur',
+          message: 'Utilisateur non connecté',
+          type: 'error'
+        });
         navigation.navigate('Login');
         return;
       }
@@ -261,22 +294,17 @@ export default function ReservationScreen({ route, navigation }) {
 
         const reservationRequest = await reservationRequestService.createReservationRequest(requestData);
 
-        if (Platform.OS === 'web') {
-          // Sur web, Alert.alert peut être bloqué ou se comporter différemment
-          alert('Demande envoyée ! Votre demande a été envoyée au propriétaire. Vous serez notifié de sa réponse.');
-          navigation.navigate('Mes Demandes');
-        } else {
-          Alert.alert(
-            'Demande envoyée !',
-            'Votre demande a été envoyée au propriétaire. Vous serez notifié de sa réponse.',
-            [
-              {
-                text: 'OK',
-                onPress: () => navigation.navigate('Mes Demandes')
-              }
-            ]
-          );
-        }
+        showAlert({
+          title: 'Demande envoyée !',
+          message: 'Votre demande a été envoyée au propriétaire. Vous serez notifié de sa réponse.',
+          type: 'success',
+          buttons: [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Mes Demandes')
+            }
+          ]
+        });
       } else {
         // MODE RÉSERVATION DIRECTE - Avec paiement immédiat
         const reservationData = {
@@ -291,17 +319,11 @@ export default function ReservationScreen({ route, navigation }) {
 
         const reservation = await reservationService.createReservation(reservationData);
 
-        if (Platform.OS === 'web') {
-          alert('Réservation confirmée !');
-          navigation.navigate('Confirmation de la réservation', {
-            reservation: reservation,
-            parkingTitle: title,
-            totalPrice: calculatedPrice,
-            startDate: formattedStartDate,
-            endDate: formattedEndDate
-          });
-        } else {
-          Alert.alert('Succès', 'Réservation confirmée !', [
+        showAlert({
+          title: 'Succès',
+          message: 'Réservation confirmée !',
+          type: 'success',
+          buttons: [
             {
               text: 'OK',
               onPress: () => navigation.navigate('Confirmation de la réservation', {
@@ -312,13 +334,17 @@ export default function ReservationScreen({ route, navigation }) {
                 endDate: formattedEndDate
               })
             }
-          ]);
-        }
+          ]
+        });
       }
 
     } catch (error) {
       console.error('[Reservation] Save error:', error.message);
-      Alert.alert('Erreur', error.message || 'Impossible de créer la réservation');
+      showAlert({
+        title: 'Erreur',
+        message: error.message || 'Impossible de créer la réservation',
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -329,10 +355,11 @@ export default function ReservationScreen({ route, navigation }) {
     const availability = availabilities[vehicleId];
 
     if (availability && !availability.isAvailable) {
-      Alert.alert(
-        'Non disponible',
-        `${availability.vehicleType} n'est pas disponible pour ce parking ou cette période.`
-      );
+      showAlert({
+        title: 'Non disponible',
+        message: `${availability.vehicleType} n'est pas disponible pour ce parking ou cette période.`,
+        type: 'error'
+      });
       return;
     }
 
@@ -350,7 +377,11 @@ export default function ReservationScreen({ route, navigation }) {
     if (pickerType === 'start') {
       // Vérifier que la date de début n'est pas dans le passé
       if (date < new Date()) {
-        Alert.alert('Date invalide', 'La date de début ne peut pas être dans le passé');
+        showAlert({
+          title: 'Date invalide',
+          message: 'La date de début ne peut pas être dans le passé',
+          type: 'error'
+        });
         return;
       }
       setStartDate(date);
@@ -412,10 +443,11 @@ export default function ReservationScreen({ route, navigation }) {
                   const token = await AsyncStorage.getItem('jwt_token');
                   const userJson = await AsyncStorage.getItem('user');
                   const user = userJson ? JSON.parse(userJson) : null;
-                  Alert.alert(
-                    'Connexion',
-                    `Token: ${token ? 'Present' : 'Aucun'}\nUtilisateur ID: ${user?.Id_Users || 'N/A'}`
-                  );
+                  showAlert({
+                    title: 'Connexion',
+                    message: `Token: ${token ? 'Present' : 'Aucun'}\nUtilisateur ID: ${user?.Id_Users || 'N/A'}`,
+                    type: 'default'
+                  });
                 }}
               >
                 <Ionicons name="information-circle-outline" size={22} color="#666" />
@@ -427,14 +459,20 @@ export default function ReservationScreen({ route, navigation }) {
                   try {
                     setShowMenu(false);
                     await authService.logout();
-                    Alert.alert('Déconnecté', 'Vous avez été déconnecté avec succès', [
-                      {
-                        text: 'OK', onPress: () => navigation.reset({
-                          index: 0,
-                          routes: [{ name: 'Login' }],
-                        })
-                      }
-                    ]);
+                    showAlert({
+                      title: 'Déconnecté',
+                      message: 'Vous avez été déconnecté avec succès',
+                      type: 'success',
+                      buttons: [
+                        {
+                          text: 'OK', 
+                          onPress: () => navigation.reset({
+                            index: 0,
+                            routes: [{ name: 'Login' }],
+                          })
+                        }
+                      ]
+                    });
                   } catch (error) {
                     console.error('[Auth] Logout error:', error.message);
                     await AsyncStorage.clear();
@@ -677,6 +715,9 @@ export default function ReservationScreen({ route, navigation }) {
           title={pickerType === 'start' ? 'Sélectionner la date de début' : 'Sélectionner la date de fin'}
           timeZoneOffsetInMinutes={new Date().getTimezoneOffset() * -1}
         />
+
+        {/* ALERT DIALOG */}
+        {AlertComponent}
       </ScrollView>
     </View>
   );

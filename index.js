@@ -9,6 +9,16 @@ import App from './App';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import appConfig from './app.json';
 
+// Load mobile-first config for web (meta viewport, PWA, etc.)
+if (Platform.OS === 'web') {
+    require('./web-mobile-config.web.js');
+}
+
+// Load Google Sign-In SDK for web
+if (Platform.OS === 'web') {
+    require('./google-signin.web.js');
+}
+
 // Load icon fonts for web
 if (Platform.OS === 'web') {
     require('./icon-fonts.web.js');

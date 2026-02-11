@@ -108,12 +108,12 @@ export default function WebFonts() {
                   font-family: inherit !important;
                 }
 
-                /* Suppression des bordures et outlines d'inputs */
+                /* Styles des inputs - garder les bordures React Native */
                 input, textarea, select {
                   font-family: 'Figtree', sans-serif !important;
                   outline: none !important;
                   box-shadow: none !important;
-                  border-width: 0 !important;
+                  /* border-width herite de React Native styles */
                 }
 
                 input:focus, textarea:focus, select:focus {
@@ -128,12 +128,7 @@ export default function WebFonts() {
             `;
             document.head.appendChild(style);
 
-            // Add Google Identity Services script for OAuth web
-            const googleScript = document.createElement('script');
-            googleScript.src = 'https://accounts.google.com/gsi/client';
-            googleScript.async = true;
-            googleScript.defer = true;
-            document.head.appendChild(googleScript);
+            // Note: Google SDK charge via google-signin.web.js dans index.js
 
             // Add Favicon
             const favicon = document.createElement('link');
