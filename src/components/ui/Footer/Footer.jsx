@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, useWindowDimensions } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notificationService from '../../../services/notificationService';
@@ -9,7 +9,6 @@ import { footerStyles as styles } from './Footer.styles';
 import { colors } from '../../../theme';
 
 const Footer = ({ navigation, activeRoute }) => {
-  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -54,8 +53,7 @@ const Footer = ({ navigation, activeRoute }) => {
   const showLabels = width > 360;
 
   return (
-    <View style={[styles.footerContainer, {
-      paddingBottom: Math.max(insets.bottom, 10),
+    <SafeAreaView edges={['bottom']} style={[styles.footerContainer, {
       paddingHorizontal: width < 380 ? 2 : 5
     }]}>
       <TouchableOpacity
@@ -156,7 +154,7 @@ const Footer = ({ navigation, activeRoute }) => {
           </Text>
         )}
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 
