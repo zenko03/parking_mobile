@@ -72,9 +72,4 @@ if (typeof document !== 'undefined') {
   const style = document.createElement('style');
   style.textContent = mobileStyles;
   document.head.appendChild(style);
-
-  // 5. Console info
-  console.log('📱 UPark Mobile Web (H5) initialized');
-  console.log('📐 Viewport:', window.innerWidth + 'x' + window.innerHeight);
-  console.log('📱 User Agent:', navigator.userAgent.match(/Mobile|Android|iPhone|iPad/i) ? 'Mobile' : 'Desktop');
 }

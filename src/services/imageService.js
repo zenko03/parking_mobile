@@ -217,17 +217,20 @@ const imageService = {
 
   deleteParkingImage: async (parkingId, filePath) => {
     try {
-      // Supprimer de Supabase Storage
-      const { error: storageError } = await supabase.storage
-        .from('parking-images')
-        .remove([filePath]);
+      // Sur Android, supabase est null - utiliser uniquement l'API backend
+      if (supabase) {
+        // Web/iOS: Supprimer de Supabase Storage directement
+        const { error: storageError } = await supabase.storage
+          .from('parking-images')
+          .remove([filePath]);
 
-      if (storageError) {
-        console.error('[Storage] Error:', storageError);
-        throw storageError;
+        if (storageError) {
+          console.error('[Storage] Error:', storageError);
+          throw storageError;
+        }
       }
 
-      // Supprimer metadata de PostgreSQL
+      // Supprimer metadata de PostgreSQL via API (fonctionne sur toutes les plateformes)
       await api.delete(`/parking-images/${parkingId}/file?filePath=${encodeURIComponent(filePath)}`);
 
       return { success: true };
@@ -243,15 +246,12 @@ const imageService = {
   // et deplacer cette logique dans les composants appelants (ReportIssue, AddEditParking)
   showImagePickerOptions: () => {
     if (Platform.OS === 'web') {
-      return new Promise((resolve) => {
-        // Sur Web, on ouvre directement la galerie par défaut ou on demande via confirm
-        const choice = window.confirm("Voulez-vous ouvrir la galerie ? (Annuler pour utiliser la caméra)");
-        if (choice) {
-          imageService.pickFromGallery(5).then(images => resolve({ source: 'gallery', images }));
-        } else {
-          imageService.takePhoto().then(image => resolve({ source: 'camera', images: image ? [image] : null }));
-        }
-      });
+      // Sur Web, retourner la galerie par defaut (compatible iOS Safari)
+      // Les composants doivent gerer deux boutons separes pour Galerie/Camera
+      return imageService.pickFromGallery(5).then(images => ({
+        source: 'gallery',
+        images
+      }));
     }
 
     // NOTE: Import Alert temporairement pour cette fonction uniquement
@@ -293,6 +293,17 @@ const imageService = {
         { cancelable: true }
       );
     });
+  },
+
+  // Fonctions directes pour Web (compatible iOS Safari - pas de dialog bloquant)
+  showGalleryPicker: async (maxPhotos = 5) => {
+    const images = await imageService.pickFromGallery(maxPhotos);
+    return { source: 'gallery', images };
+  },
+
+  showCameraPicker: async () => {
+    const image = await imageService.takePhoto();
+    return { source: 'camera', images: image ? [image] : null };
   },
 
 

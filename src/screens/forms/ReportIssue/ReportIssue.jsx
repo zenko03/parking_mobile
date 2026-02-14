@@ -76,24 +76,33 @@ export default function ReportIssue({ route, navigation }) {
   };
 
   // Sélectionner une photo (galerie ou caméra)
-  const handleAddPhoto = async () => {
+  const handleAddPhoto = async (source = 'gallery') => {
     if (photos.length >= 5) {
       showAlert({ title: 'Limite atteinte', message: 'Vous pouvez ajouter maximum 5 photos', type: 'warning' });
       return;
     }
 
     try {
-      const result = await imageService.showImagePickerOptions();
+      let result;
+      if (Platform.OS === 'web') {
+        // Appel direct pour eviter window.confirm() qui bloque iOS Safari
+        result = source === 'camera'
+          ? await imageService.showCameraPicker()
+          : await imageService.showGalleryPicker(5);
+      } else {
+        // React Native natif: utilise Alert.alert
+        result = await imageService.showImagePickerOptions();
+      }
 
       if (result.images && result.images.length > 0) {
-        // Limiter le nombre de photos ajoutées
+        // Limiter le nombre de photos ajoutees
         const remainingSlots = 5 - photos.length;
         const newPhotos = result.images.slice(0, remainingSlots);
         setPhotos([...photos, ...newPhotos]);
       }
     } catch (error) {
-      console.error('Erreur sélection photo:', error);
-      showAlert({ title: 'Erreur', message: 'Impossible de sélectionner la photo', type: 'error' });
+      console.error('Erreur selection photo:', error);
+      showAlert({ title: 'Erreur', message: 'Impossible de selectionner la photo', type: 'error' });
     }
   };
 
@@ -355,12 +364,37 @@ export default function ReportIssue({ route, navigation }) {
 
             {/* Bouton ajouter photo */}
             {photos.length < 5 && (
-              <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhoto}>
-                <View style={styles.addPhotoIcon}>
-                  <Ionicons name="camera" size={20} color="#6BBF47" />
-                </View>
-                <Text style={styles.addPhotoText}>Ajouter</Text>
-              </TouchableOpacity>
+              Platform.OS === 'web' ? (
+                // Sur web: deux boutons separes (fix iOS Safari)
+                <>
+                  <TouchableOpacity 
+                    style={[styles.addPhotoButton, { marginRight: 8 }]} 
+                    onPress={() => handleAddPhoto('gallery')}
+                  >
+                    <View style={styles.addPhotoIcon}>
+                      <Ionicons name="images" size={20} color="#6BBF47" />
+                    </View>
+                    <Text style={styles.addPhotoText}>Galerie</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.addPhotoButton} 
+                    onPress={() => handleAddPhoto('camera')}
+                  >
+                    <View style={styles.addPhotoIcon}>
+                      <Ionicons name="camera" size={20} color="#6BBF47" />
+                    </View>
+                    <Text style={styles.addPhotoText}>Camera</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                // Sur native: bouton unique avec Alert.alert
+                <TouchableOpacity style={styles.addPhotoButton} onPress={() => handleAddPhoto()}>
+                  <View style={styles.addPhotoIcon}>
+                    <Ionicons name="camera" size={20} color="#6BBF47" />
+                  </View>
+                  <Text style={styles.addPhotoText}>Ajouter</Text>
+                </TouchableOpacity>
+              )
             )}
           </View>
         </View>

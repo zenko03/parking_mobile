@@ -40,42 +40,36 @@ export default function SplashScreen({ navigation }) {
 
     const checkAuthStatus = async () => {
         try {
-            console.log('🔍 Vérification de la session...');
-
-            // Vérifier si un token existe
+            // Verifier si un token existe
             const token = await AsyncStorage.getItem('jwt_token');
 
             if (!token) {
-                console.log(' Aucun token trouvé, redirection vers Login');
                 navigateToLogin();
                 return;
             }
 
-            // Vérifier si le token est expiré
+            // Verifier si le token est expire
             const isExpired = await authService.isTokenExpired();
 
             if (isExpired) {
-                console.log('⏰ Token expiré, nettoyage et redirection vers Login');
                 await authService.logout();
                 navigateToLogin();
                 return;
             }
 
-            // Vérifier si les données utilisateur existent
+            // Verifier si les donnees utilisateur existent
             const userJson = await AsyncStorage.getItem('user');
 
             if (!userJson) {
-                console.log(' Données utilisateur manquantes, redirection vers Login');
                 navigateToLogin();
                 return;
             }
 
             // Session valide, redirection vers Home
-            console.log(' Session valide, redirection vers Home');
             navigateToHome();
 
         } catch (error) {
-            console.error(' Erreur vérification session:', error);
+            console.error('Erreur verification session:', error);
             navigateToLogin();
         }
     };

@@ -243,7 +243,7 @@ const Header = ({ navigation }) => {
                 
                 <TouchableOpacity 
                   style={styles.menuItem}
-                  disabled={true}
+                  onPress={() => handleNavigate('MyAccount')}
                 >
                   <View style={styles.menuIconContainer}>
                     <Ionicons name="person-circle-outline" size={22} color={colors.text.gray.slate.dark} />

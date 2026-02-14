@@ -24,7 +24,7 @@ const ENV = {
     USE_IMAGE_PROXY: false,  
     SUPABASE_URL: 'https://fbpefbjoxzkxombdcqif.supabase.co',
     
-    ENABLE_LOGS: true,
+    ENABLE_LOGS: false,
     TIMEOUT: 15000, 
   },
   
@@ -102,9 +102,8 @@ export const log = {
     }
   },
   error: (...args) => {
-    if (isLoggingEnabled()) {
-      console.error(...args);
-    }
+    // Toujours afficher les erreurs, meme en production
+    console.error(...args);
   },
   warn: (...args) => {
     if (isLoggingEnabled()) {

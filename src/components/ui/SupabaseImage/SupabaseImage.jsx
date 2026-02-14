@@ -7,11 +7,24 @@ import { colors } from '../../../theme';
 // Use FastImage on native platforms, standard Image on web
 let FastImage = null;
 if (Platform.OS !== 'web') {
-  FastImage = require('react-native-fast-image');
+  try {
+    const FastImageModule = require('react-native-fast-image');
+    // Check if we have the actual FastImage component with all properties
+    FastImage = FastImageModule?.default || FastImageModule;
+    
+    // Verify FastImage has required properties
+    if (!FastImage?.priority || !FastImage?.resizeMode) {
+      console.warn('[SupabaseImage] FastImage module incomplete, using standard Image');
+      FastImage = null;
+    }
+  } catch (e) {
+    console.warn('[SupabaseImage] FastImage not available, using standard Image:', e.message);
+    FastImage = null;
+  }
 }
 
 // Web-compatible image component wrapper
-const ImageComponent = Platform.OS === 'web' ? Image : FastImage;
+const ImageComponent = (Platform.OS === 'web' || !FastImage) ? Image : FastImage;
 
 /**
  * Composant Image optimisé pour Supabase Storage
@@ -48,8 +61,8 @@ const SupabaseImage = ({ uri, style, resizeMode = 'cover', placeholder, ...props
 
   return (
     <View style={[styles.container, style]}>
-      {Platform.OS === 'web' ? (
-        // Standard Image for web
+      {(Platform.OS === 'web' || !FastImage) ? (
+        // Standard Image for web or when FastImage not available
         <Image
           {...props}
           source={{ uri }}

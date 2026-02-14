@@ -23,6 +23,7 @@ import {
 import { registerDeviceToken } from './src/services/notificationService';
 import { navigationRef, navigateFromNotification } from './src/services/navigationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { loadCurrency } from './src/config/constants';
 
 //screens
 import Login from './src/screens/auth/Login/Login'; // relative path
@@ -50,6 +51,7 @@ import ReportIssue from "./src/screens/forms/ReportIssue/ReportIssue";
 import MyDisputes from "./src/screens/lists/MyDisputes/MyDisputes";
 import Dashboard from "./src/screens/main/Dashboard/Dashboard";
 import SplashScreen from "./src/screens/auth/SplashScreen/SplashScreen";
+import MyAccount from "./src/screens/profile/MyAccount/MyAccount";
 import WebFonts from "./src/components/WebFonts";
 
 
@@ -62,6 +64,9 @@ export default function App() {
   React.useEffect(() => {
     const initializeFCM = async () => {
       try {
+        // Charger la devise préférée de l'utilisateur
+        await loadCurrency();
+
         const fcmToken = await getFCMToken();
         if (fcmToken) {
           // Récupérer l'ID utilisateur depuis AsyncStorage (après login)
@@ -187,6 +192,7 @@ export default function App() {
               <Stack.Screen name="ReportIssue" component={ReportIssue} />
               <Stack.Screen name="MyDisputes" component={MyDisputes} />
               <Stack.Screen name="Dashboard" component={Dashboard} />
+              <Stack.Screen name="MyAccount" component={MyAccount} />
             </Stack.Navigator>
           </NavigationContainer>
         </PaperProvider>

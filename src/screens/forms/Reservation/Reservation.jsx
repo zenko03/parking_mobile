@@ -6,13 +6,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { reservationService, vehicleService, parkingService, authService, reservationRequestService } from "../../../services";
 import Header from "../../../components/ui/Header/Header";
 import { useAlert } from "../../../hooks/useAlert";
+import { formatPrice } from "../../../config/constants";
 
 export default function ReservationScreen({ route, navigation }) {
   const { parkingId, title, price, announcementId, mode = 'reservation' } = route.params;
   // mode: 'reservation' (paiement immédiat) ou 'request' (demande sans paiement)
 
   const { AlertComponent, showAlert } = useAlert();
-  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [selectedTypes, setSelectedTypes] = useState({}); // { vehicleId: quantity }
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [availabilities, setAvailabilities] = useState({});
   const [startDate, setStartDate] = useState(new Date());
@@ -42,7 +43,7 @@ export default function ReservationScreen({ route, navigation }) {
 
   // Recalculer le prix quand les dates ou véhicules changent
   useEffect(() => {
-    if (selectedTypes.length > 0 && parkingId) {
+    if (Object.keys(selectedTypes).length > 0 && parkingId) {
       calculatePrice();
     }
   }, [startDate, endDate, selectedTypes]);
@@ -155,9 +156,9 @@ export default function ReservationScreen({ route, navigation }) {
       }
 
       // Formater les véhicules sélectionnés selon le format attendu par le backend
-      const selectedVehicles = selectedTypes.map(vehicleId => ({
-        vehicleTypeId: vehicleId,
-        quantity: 1
+      const selectedVehicles = Object.entries(selectedTypes).map(([vehicleId, quantity]) => ({
+        vehicleTypeId: parseInt(vehicleId),
+        quantity: quantity
       }));
 
       const formattedStartDate = formatDateForBackend(startDate);
@@ -173,10 +174,11 @@ export default function ReservationScreen({ route, navigation }) {
       setCalculatedPrice(priceData.totalPrice || priceData);
     } catch (error) {
       console.error('[Price] Calculation error:', error.message);
-      // Calculer un prix estimé en cas d'erreur
+      // Calculer un prix estime en cas d'erreur
       const hours = Math.ceil((endDate - startDate) / (1000 * 60 * 60));
       const hourlyRate = parseFloat(price) || 2.5;
-      setCalculatedPrice(hours * hourlyRate * selectedTypes.length);
+      const totalVehicles = Object.values(selectedTypes).reduce((sum, qty) => sum + qty, 0);
+      setCalculatedPrice(hours * hourlyRate * totalVehicles);
     } finally {
       setLoadingPrice(false);
     }
@@ -184,7 +186,7 @@ export default function ReservationScreen({ route, navigation }) {
 
   const handleConfirmReservation = async () => {
     // Validation
-    if (selectedTypes.length === 0) {
+    if (Object.keys(selectedTypes).length === 0) {
       showAlert({
         title: 'Erreur',
         message: 'Veuillez sélectionner au moins un type de véhicule',
@@ -242,9 +244,9 @@ export default function ReservationScreen({ route, navigation }) {
       }
 
       // Vérifier que tous les véhicules sélectionnés sont toujours disponibles
-      for (const vehicleId of selectedTypes) {
+      for (const [vehicleId, quantity] of Object.entries(selectedTypes)) {
         const availability = availabilities[vehicleId];
-        if (!availability || !availability.isAvailable || availability.availableCapacity < 1) {
+        if (!availability || !availability.isAvailable || availability.availableCapacity < quantity) {
           showAlert({
             title: 'Plus disponible',
             message: `Le véhicule n'est plus disponible pour cette période. Veuillez en sélectionner un autre.`,
@@ -271,10 +273,10 @@ export default function ReservationScreen({ route, navigation }) {
         return;
       }
 
-      // Créer la réservation OU la demande selon le mode
-      const selectedVehicles = selectedTypes.map(vehicleId => ({
-        vehicleTypeId: vehicleId,
-        quantity: 1
+      // Creer la reservation OU la demande selon le mode
+      const selectedVehicles = Object.entries(selectedTypes).map(([vehicleId, quantity]) => ({
+        vehicleTypeId: parseInt(vehicleId),
+        quantity: quantity
       }));
 
       const formattedStartDate = formatDateForBackend(startDate);
@@ -363,9 +365,48 @@ export default function ReservationScreen({ route, navigation }) {
       return;
     }
 
-    setSelectedTypes(prev =>
-      prev.includes(vehicleId) ? prev.filter(t => t !== vehicleId) : [...prev, vehicleId]
-    );
+    setSelectedTypes(prev => {
+      const newSelection = { ...prev };
+      if (vehicleId in newSelection) {
+        // Supprimer si déjà sélectionné
+        delete newSelection[vehicleId];
+      } else {
+        // Ajouter avec quantité = 1
+        newSelection[vehicleId] = 1;
+      }
+      return newSelection;
+    });
+  };
+
+  const incrementQuantity = (vehicleId) => {
+    const availability = availabilities[vehicleId];
+    const currentQuantity = selectedTypes[vehicleId] || 0;
+    const maxCapacity = availability?.availableCapacity || 10;
+
+    if (currentQuantity < maxCapacity) {
+      setSelectedTypes(prev => ({
+        ...prev,
+        [vehicleId]: currentQuantity + 1
+      }));
+    }
+  };
+
+  const decrementQuantity = (vehicleId) => {
+    const currentQuantity = selectedTypes[vehicleId] || 0;
+
+    if (currentQuantity > 1) {
+      setSelectedTypes(prev => ({
+        ...prev,
+        [vehicleId]: currentQuantity - 1
+      }));
+    } else if (currentQuantity === 1) {
+      // Supprimer si on descend à 0
+      setSelectedTypes(prev => {
+        const newSelection = { ...prev };
+        delete newSelection[vehicleId];
+        return newSelection;
+      });
+    }
   };
 
   const openDateTimePicker = (type) => {
@@ -409,6 +450,24 @@ export default function ReservationScreen({ route, navigation }) {
         style={{ flex: 1, paddingHorizontal: 20 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* BOUTON RETOUR */}
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{
+            position: 'relative',
+            top: 0,
+            left: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            padding: 10,
+            borderRadius: 50,
+            alignSelf: 'flex-start',
+            marginBottom: 10,
+            flexDirection: 'row',
+            alignItems: 'center'
+          }}
+        >
+          <Ionicons name="arrow-back" size={22} color="#fff" />
+        </TouchableOpacity>
 
         {/* Modal Menu */}
         <Modal
@@ -565,6 +624,8 @@ export default function ReservationScreen({ route, navigation }) {
             const availability = availabilities[vehicleId];
             const isAvailable = availability ? availability.isAvailable : true;
             const availableCapacity = availability ? availability.availableCapacity : 0;
+            const isSelected = vehicleId in selectedTypes;
+            const currentQuantity = selectedTypes[vehicleId] || 0;
 
             // Mapper les icônes du backend vers les icônes Ionicons
             const iconMap = {
@@ -581,56 +642,111 @@ export default function ReservationScreen({ route, navigation }) {
             const iconName = iconMap[v.icon] || v.icon || "car";
 
             return (
-              <TouchableOpacity
-                key={`vehicle-${vehicleId}-${index}`}
-                onPress={() => toggle(vehicleId)}
-                disabled={!isAvailable || loadingAvailability}
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 10,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  backgroundColor: !isAvailable
-                    ? "#E0E0E0"
-                    : selectedTypes.includes(vehicleId)
-                      ? "#A4E66E"
-                      : "#FFD6D6",
-                  opacity: !isAvailable ? 0.5 : 1,
-                  borderWidth: 2,
-                  borderColor: !isAvailable ? "#999" : selectedTypes.includes(vehicleId) ? "#7AC142" : "#FFB6B6"
-                }}
-              >
-                <Ionicons
-                  name={iconName}
-                  size={28}
-                  color={!isAvailable ? "#666" : selectedTypes.includes(vehicleId) ? "#2C5F2D" : "#8B0000"}
-                />
-                <Text style={{
-                  fontSize: 10,
-                  marginTop: 4,
-                  fontWeight: '600',
-                  color: !isAvailable ? "#666" : "#333"
-                }}>
-                  {v.types || v.type}
-                </Text>
-                {availability && (
+              <View key={`vehicle-${vehicleId}-${index}`} style={{ marginBottom: 15 }}>
+                <TouchableOpacity
+                  onPress={() => toggle(vehicleId)}
+                  disabled={!isAvailable || loadingAvailability}
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 10,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    backgroundColor: !isAvailable
+                      ? "#E0E0E0"
+                      : isSelected
+                        ? "#A4E66E"
+                        : "#FFD6D6",
+                    opacity: !isAvailable ? 0.5 : 1,
+                    borderWidth: 2,
+                    borderColor: !isAvailable ? "#999" : isSelected ? "#7AC142" : "#FFB6B6"
+                  }}
+                >
+                  <Ionicons
+                    name={iconName}
+                    size={28}
+                    color={!isAvailable ? "#666" : isSelected ? "#2C5F2D" : "#8B0000"}
+                  />
                   <Text style={{
                     fontSize: 10,
+                    marginTop: 4,
                     fontWeight: '600',
-                    color: !isAvailable ? "#666" : isAvailable ? "#2C5F2D" : "#555"
+                    color: !isAvailable ? "#666" : "#333"
                   }}>
-                    {isAvailable ? `${availableCapacity} dispo` : 'Complet'}
+                    {v.types || v.type}
                   </Text>
+                  {availability && (
+                    <Text style={{
+                      fontSize: 10,
+                      fontWeight: '600',
+                      color: !isAvailable ? "#666" : isAvailable ? "#2C5F2D" : "#555"
+                    }}>
+                      {isAvailable ? `${availableCapacity} dispo` : 'Complet'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                {/* Controles de quantite pour vehicules selectionnes */}
+                {isSelected && (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginTop: 5,
+                    backgroundColor: '#F0F8FF',
+                    borderRadius: 8,
+                    padding: 4
+                  }}>
+                    <TouchableOpacity
+                      onPress={() => decrementQuantity(vehicleId)}
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        backgroundColor: '#FF6B6B',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Ionicons name="remove" size={16} color="#fff" />
+                    </TouchableOpacity>
+
+                    <Text style={{
+                      marginHorizontal: 8,
+                      fontSize: 14,
+                      fontWeight: '700',
+                      color: '#2C5F2D',
+                      minWidth: 20,
+                      textAlign: 'center'
+                    }}>
+                      {currentQuantity}
+                    </Text>
+
+                    <TouchableOpacity
+                      onPress={() => incrementQuantity(vehicleId)}
+                      disabled={currentQuantity >= availableCapacity}
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        backgroundColor: currentQuantity >= availableCapacity ? '#CCCCCC' : '#7AC142',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Ionicons name="add" size={16} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
                 )}
-              </TouchableOpacity>
+              </View>
             );
           })}
         </View>
 
-        {selectedTypes.length > 0 && (
+        {Object.keys(selectedTypes).length > 0 && (
           <Text style={{ marginTop: 10, color: '#666' }}>
-            {selectedTypes.length} véhicule(s) sélectionné(s)
+            {Object.values(selectedTypes).reduce((sum, qty) => sum + qty, 0)} véhicule(s) sélectionné(s) 
+            ({Object.keys(selectedTypes).length} type{Object.keys(selectedTypes).length > 1 ? 's' : ''})
           </Text>
         )}
 
@@ -676,7 +792,7 @@ export default function ReservationScreen({ route, navigation }) {
           <ActivityIndicator size="small" color="#A019FF" style={{ marginVertical: 10 }} />
         ) : (
           <Text style={{ textAlign: "center", fontSize: 28, fontWeight: "800", color: "#A019FF" }}>
-            {calculatedPrice ? `${calculatedPrice.toFixed(2)}$` : price}
+            {calculatedPrice ? formatPrice(calculatedPrice) : formatPrice(price)}
           </Text>
         )}
 

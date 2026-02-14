@@ -5,19 +5,12 @@ import { getApiUrl, getApiTimeout, log } from './environment';
 // ========================================
 // CONFIGURATION API - CENTRALISÉE
 // ========================================
-// La configuration est maintenant gérée dans environment.js
-// Elle détecte automatiquement l'environnement (dev/prod)
-// et configure l'URL selon la plateforme (Android/iOS)
 
-// Récupération de la configuration depuis environment.js
+// Recuperation de la configuration depuis environment.js
 const BASE_URL = getApiUrl();
 const TIMEOUT = getApiTimeout();
 
-console.log('🔧 Configuration API chargée:');
-console.log('   - BASE_URL:', BASE_URL);
-console.log('   - TIMEOUT:', TIMEOUT + 'ms');
-
-// Création de l'instance axios
+// Creation de l'instance axios
 const api = axios.create({
   baseURL: BASE_URL,
   headers: {
@@ -85,14 +78,13 @@ api.interceptors.request.use(
         return config.url === endpoint || config.url.startsWith(endpoint);
       });
 
-      // Si c'est protégé, on ne vérifie pas les publics
+      // Si c'est protege, on ne verifie pas les publics
       if (isProtectedEndpoint) {
         const token = await AsyncStorage.getItem('jwt_token');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
-          console.log('🔑 Endpoint protégé - Token ajouté pour:', config.url);
         } else {
-          console.warn(' Endpoint protégé mais pas de token pour:', config.url);
+          console.warn('Endpoint protege mais pas de token pour:', config.url);
         }
         return config;
       }
@@ -127,20 +119,13 @@ api.interceptors.request.use(
 
       const isTrulyPublic = isPublicEndpoint || isPublicParkingEndpoint || isParkingListOrDetail;
 
-      console.log('🔍 Vérification URL:', config.url, '| Méthode:', config.method, '| Public?', isTrulyPublic);
-
       if (!isTrulyPublic) {
         const token = await AsyncStorage.getItem('jwt_token');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
-          console.log('🔑 Token ajouté pour:', config.url);
-          console.log('🔑 Token (premiers caractères):', token.substring(0, 20) + '...');
         } else {
-          console.warn(' Pas de token pour:', config.url);
-          console.warn(' Cette requête nécessite une authentification mais aucun token n\'a été trouvé!');
+          console.warn('Pas de token pour:', config.url);
         }
-      } else {
-        console.log('🌐 Endpoint public (pas de token):', config.url);
       }
     } catch (error) {
       console.error('Erreur lors de la récupération du token:', error);
@@ -162,35 +147,32 @@ api.interceptors.response.use(
       // Le serveur a répondu avec un code d'erreur
       const { status, data } = error.response;
 
-      console.error(`Erreur: Erreur ${status} pour ${error.config?.url}:`);
-      console.error(' Détails de l\'erreur:', typeof data === 'string' ? data : JSON.stringify(data, null, 2));
-      console.error(' Type de données:', typeof data);
-      console.error(' Headers de réponse:', JSON.stringify(error.response.headers, null, 2));
+      console.error(`Erreur ${status} pour ${error.config?.url}`);
+      log.info('Details erreur:', { status, data, dataType: typeof data });
 
       if (status === 401) {
         // Token expiré ou invalide - déconnecter l'utilisateur proprement
-        console.warn('🚪 Token invalide ou expiré, déconnexion automatique...');
+        console.warn('Token invalide ou expire, deconnexion automatique...');
 
         // Suppression complète des données d'authentification
         await AsyncStorage.removeItem('jwt_token');
         await AsyncStorage.removeItem('user');
         await AsyncStorage.removeItem('username');
 
-        console.log(' Données d\'authentification supprimées');
         // Note: La navigation vers Login doit être gérée dans les composants
       } else if (status === 403) {
-        console.error('🚫 Accès refusé (403) - Vérifiez les permissions');
+        console.error('Acces refuse (403) - Verifiez les permissions');
       } else if (status === 400) {
-        console.error(' Requête invalide (400) - Vérifiez les données envoyées');
-        console.error('📦 Données de la requête:', error.config?.data);
+        console.error('Requete invalide (400)');
+        log.info('Donnees de la requete:', error.config?.data);
       }
     } else if (error.request) {
       // La requête a été faite mais pas de réponse
-      console.error('📡 Pas de réponse du serveur. Vérifiez que le backend est démarré.');
-      console.error('📡 Détails de la requête:', error.request);
+      console.error('Pas de reponse du serveur.');
+      log.info('Details requete:', error.request);
     } else {
       // Erreur lors de la configuration de la requête
-      console.error('⚙️ Erreur configuration requête:', error.message);
+      console.error('Erreur configuration requete:', error.message);
     }
 
     return Promise.reject(error);
