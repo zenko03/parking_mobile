@@ -15,7 +15,7 @@ if (typeof document !== 'undefined') {
     { name: 'mobile-web-app-capable', content: 'yes' },
     { name: 'apple-mobile-web-app-capable', content: 'yes' },
     { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
-    { name: 'theme-color', content: '#A4E66E' }, // Couleur theme UPark
+    { name: 'theme-color', content: '#FFFFFF' }, // Blanc pour eviter fond vert sur Safari iOS
     { name: 'format-detection', content: 'telephone=no' }, // Desactive detection auto tel
   ];
 

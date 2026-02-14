@@ -53,7 +53,7 @@ const Footer = ({ navigation, activeRoute }) => {
   const showLabels = width > 360;
 
   return (
-    <SafeAreaView edges={['bottom']} style={[styles.footerContainer, {
+    <SafeAreaView edges={['bottom']} className="footer-safe-area" style={[styles.footerContainer, {
       paddingHorizontal: width < 380 ? 2 : 5
     }]}>
       <TouchableOpacity
