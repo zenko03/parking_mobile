@@ -46,15 +46,12 @@ if (typeof document !== 'undefined') {
       min-width: 44px;
     }
 
-    /* Safe area insets (iPhone notch) */
-    body {
-      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-    }
-
-    /* Smooth scrolling mobile */
-    html {
-      -webkit-overflow-scrolling: touch;
-      scroll-behavior: smooth;
+    /* html et body prennent toute la hauteur sans deborder */
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
     }
 
     /* Prevent horizontal scroll */
@@ -63,9 +60,27 @@ if (typeof document !== 'undefined') {
       max-width: 100vw;
     }
 
-    /* Loading state */
+    /* 
+     * Le root React Native Web prend toute la hauteur visible.
+     * 100dvh = dynamic viewport height = exclut les toolbars mobiles (Chrome/Safari).
+     * Seul padding-top est ici: le notch en haut.
+     * Le bas est gere par le composant Footer directement.
+     */
     #root {
-      min-height: 100vh;
+      height: 100vh;   /* fallback: navigateurs sans support dvh */
+      height: 100dvh;  /* dynamic viewport: exclut les toolbars mobiles */
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Smooth scrolling mobile */
+    html {
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
     }
   `;
 

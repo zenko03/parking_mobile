@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, Image, ActivityIndicator, Platform } from "react-native";
 import { Button } from 'react-native-paper';
 import { ScrollView } from "react-native-gesture-handler";
@@ -13,7 +13,36 @@ export default function Login({ navigation }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const { AlertComponent, showAlert } = useAlert();
+
+  // Detecter le retour depuis Google OAuth (hash #id_token=...)
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (typeof window === 'undefined') return;
+
+    const hash = window.location.hash;
+    if (!hash || !hash.includes('id_token=')) return;
+
+    // Extraire le token du hash
+    const hashParams = new URLSearchParams(hash.replace('#', ''));
+    const idToken = hashParams.get('id_token');
+    if (!idToken) return;
+
+    // Nettoyer le hash de l'URL pour eviter double traitement
+    window.history.replaceState(null, '', window.location.pathname);
+
+    // Authentifier avec le token
+    setGoogleLoading(true);
+    authService.loginWithGoogle(idToken)
+      .then(response => {
+        navigation.replace('Liste des parkings');
+      })
+      .catch(err => {
+        showAlert({ title: 'Erreur Google', message: err.message || 'Connexion échouée', type: 'error' });
+      })
+      .finally(() => setGoogleLoading(false));
+  }, []);
 
   const handleSubmit = async () => {
     // Validation des champs
@@ -86,6 +115,16 @@ export default function Login({ navigation }) {
     }
   };
 
+
+  // Overlay pendant le traitement du token Google apres le redirect OAuth
+  if (googleLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <ActivityIndicator size="large" color="#A4E66E" />
+        <Text style={{ marginTop: 16, color: '#555', fontSize: 15 }}>Connexion Google en cours...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
