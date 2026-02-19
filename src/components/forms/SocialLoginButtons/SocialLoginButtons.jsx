@@ -24,8 +24,8 @@ const SocialLoginButtons = ({ navigation, onSuccess, onError }) => {
     const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
     sessionStorage.setItem('google_oauth_nonce', nonce);
 
-    // Redirect URI = la page actuelle (sans le hash)
-    const redirectUri = window.location.origin + window.location.pathname;
+    // Redirect URI = origin sans slash final (doit correspondre exactement a Google Cloud Console)
+    const redirectUri = window.location.origin;
 
     const params = new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
